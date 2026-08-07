@@ -94,6 +94,16 @@
   .lesson-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
   .lesson-row input{flex:1;}
   .lesson-row input.lesson-title{flex:2;}
+  .lesson-card{border:1.5px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff;}
+  .lesson-card .lesson-top{display:flex;gap:8px;margin-bottom:8px;}
+  .lesson-card .lesson-title{flex:2;font-weight:600;}
+  .lesson-card .lesson-video{flex:2;}
+  .lesson-card textarea.lesson-desc{width:100%;font-size:12.5px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;min-height:44px;margin-bottom:8px;font-family:'Inter',sans-serif;}
+  .link-row{display:flex;gap:6px;margin-bottom:6px;}
+  .link-row input{font-size:12px;padding:7px 9px;}
+  .link-row input.link-label{flex:1;}
+  .link-row input.link-url{flex:2;}
+  .lesson-links-label{font-size:11px;color:var(--slate);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 4px;}
   .icon-btn{background:none;border:none;color:var(--error);font-size:16px;padding:4px 8px;border-radius:6px;}
   .icon-btn:hover{background:#FCE9E9;}
   .add-link{font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:var(--blue);background:none;border:none;padding:6px 0;}
@@ -229,6 +239,10 @@
     </div>
     <div class="form-row"><label>Descripción corta (catálogo)</label><textarea id="courseShortDesc" placeholder="1-2 líneas que aparecen en la tarjeta del catálogo"></textarea></div>
     <div class="form-row"><label>Descripción completa (página del producto)</label><textarea id="courseFullDesc" placeholder="Descripción detallada del curso"></textarea></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Video de bienvenida (link de Bunny.net)</label><input type="text" id="courseIntroVideo" placeholder="https://..."></div>
+      <div class="form-row"><label>Video de despedida (link de Bunny.net)</label><input type="text" id="courseOutroVideo" placeholder="https://..."></div>
+    </div>
     <div class="form-row"><label>Estado</label>
       <select id="courseStatus">
         <option value="draft">Borrador (no visible al público)</option>
@@ -427,6 +441,8 @@ function openCourseModal(){
   document.getElementById('courseAccessDays').value = '90';
   document.getElementById('courseShortDesc').value = '';
   document.getElementById('courseFullDesc').value = '';
+  document.getElementById('courseIntroVideo').value = '';
+  document.getElementById('courseOutroVideo').value = '';
   document.getElementById('courseStatus').value = 'draft';
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
@@ -444,6 +460,8 @@ window.editCourse = async function(id){
   document.getElementById('courseAccessDays').value = course.access_days;
   document.getElementById('courseShortDesc').value = course.short_description || '';
   document.getElementById('courseFullDesc').value = course.description || '';
+  document.getElementById('courseIntroVideo').value = course.intro_video_url || '';
+  document.getElementById('courseOutroVideo').value = course.outro_video_url || '';
   document.getElementById('courseStatus').value = course.status;
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
@@ -477,27 +495,52 @@ function addChapterBlock(title, lessons){
   document.getElementById('chaptersContainer').appendChild(div);
   const list = div.querySelector('.lessons-list');
   if (lessons && lessons.length){
-    lessons.forEach(l => addLessonRowEl(list, l.title, l.video_url));
+    lessons.forEach(l => addLessonRowEl(list, l.title, l.video_url, l.description, l.resource_links));
   } else {
-    addLessonRowEl(list, '', '');
+    addLessonRowEl(list, '', '', '', []);
   }
 }
 
 window.addLessonRow = function(chId){
   const list = document.querySelector('#' + chId + ' .lessons-list');
-  addLessonRowEl(list, '', '');
+  addLessonRowEl(list, '', '', '', []);
 };
 
-function addLessonRowEl(list, title, videoUrl){
+function addLessonRowEl(list, title, videoUrl, description, links){
+  const card = document.createElement('div');
+  card.className = 'lesson-card';
+  const linksHtml = (links && links.length ? links : [{label:'',url:''}]).map(l => `
+    <div class="link-row">
+      <input type="text" class="link-label" placeholder="Ej. Sitio del TDI" value="${escapeHtml(l.label||'')}">
+      <input type="text" class="link-url" placeholder="https://..." value="${escapeHtml(l.url||'')}">
+      <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
+    </div>
+  `).join('');
+  card.innerHTML = `
+    <div class="lesson-top">
+      <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(title||'')}">
+      <input type="text" class="lesson-video" placeholder="Link del video (Bunny.net)" value="${escapeHtml(videoUrl||'')}">
+      <button type="button" class="icon-btn" onclick="this.closest('.lesson-card').remove()">✕</button>
+    </div>
+    <textarea class="lesson-desc" placeholder="Descripción de la lección (qué va a aprender el alumno aquí)">${escapeHtml(description||'')}</textarea>
+    <div class="lesson-links-label">Links recomendados para esta clase</div>
+    <div class="links-list">${linksHtml}</div>
+    <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
+  `;
+  list.appendChild(card);
+}
+
+window.addLinkRow = function(btn){
+  const list = btn.previousElementSibling;
   const row = document.createElement('div');
-  row.className = 'lesson-row';
+  row.className = 'link-row';
   row.innerHTML = `
-    <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(title||'')}">
-    <input type="text" class="lesson-video" placeholder="Link del video (Bunny.net)" value="${escapeHtml(videoUrl||'')}">
+    <input type="text" class="link-label" placeholder="Ej. Sitio del TDI">
+    <input type="text" class="link-url" placeholder="https://...">
     <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
   `;
   list.appendChild(row);
-}
+};
 
 function escapeHtml(str){
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -510,6 +553,8 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
   const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
   const shortDesc = document.getElementById('courseShortDesc').value.trim();
   const fullDesc = document.getElementById('courseFullDesc').value.trim();
+  const introVideo = document.getElementById('courseIntroVideo').value.trim();
+  const outroVideo = document.getElementById('courseOutroVideo').value.trim();
   const status = document.getElementById('courseStatus').value;
 
   const msgEl = document.getElementById('courseMsg');
@@ -520,7 +565,8 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
   let courseId = editingCourseId;
   const payload = {
     title, slug, price_cents: Math.round(price*100), access_days: accessDays,
-    short_description: shortDesc, description: fullDesc, status,
+    short_description: shortDesc, description: fullDesc,
+    intro_video_url: introVideo, outro_video_url: outroVideo, status,
     created_by: currentUser.id
   };
 
@@ -543,12 +589,20 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     if (chErr) continue;
     chPos++;
     let lessonPos = 0;
-    const lessonRows = block.querySelectorAll('.lesson-row');
-    for (const row of lessonRows){
-      const lTitle = row.querySelector('.lesson-title').value.trim();
-      const lVideo = row.querySelector('.lesson-video').value.trim();
+    const lessonCards = block.querySelectorAll('.lesson-card');
+    for (const card of lessonCards){
+      const lTitle = card.querySelector('.lesson-title').value.trim();
+      const lVideo = card.querySelector('.lesson-video').value.trim();
+      const lDesc = card.querySelector('.lesson-desc').value.trim();
       if (!lTitle) continue;
-      await sb.from('lessons').insert({ chapter_id: chData.id, title: lTitle, video_url: lVideo, position: lessonPos, content_type:'video' });
+      const links = [...card.querySelectorAll('.link-row')].map(r => ({
+        label: r.querySelector('.link-label').value.trim(),
+        url: r.querySelector('.link-url').value.trim()
+      })).filter(l => l.label || l.url);
+      await sb.from('lessons').insert({
+        chapter_id: chData.id, title: lTitle, video_url: lVideo, description: lDesc,
+        resource_links: links, position: lessonPos, content_type:'video'
+      });
       lessonPos++;
     }
   }
