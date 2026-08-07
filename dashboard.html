@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Curso — GMAX Insurance Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0F2447; --blue:#1E4C9A; --blue-light:#2E5FB8;
+    --gold:#F0B429; --gold-dark:#D69A1C;
+    --bg:#F5F7FB; --ink:#12294F; --slate:#5A6478; --line:#E1E5EF; --white:#FFFFFF;
+    --success:#2A7A3B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);}
+  h1,h2,h3{font-family:'Sora',sans-serif;}
+  a{text-decoration:none;color:inherit;}
+  button{font-family:'Inter',sans-serif;cursor:pointer;}
+
+  #gate{position:fixed;inset:0;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:999;font-family:'Sora',sans-serif;text-align:center;padding:20px;}
+  #gate.hidden{display:none;}
+  .spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .gate-btn{margin-top:10px;background:var(--gold);color:var(--navy);border:none;padding:12px 24px;border-radius:9px;font-weight:700;font-family:'Sora',sans-serif;}
+
+  #app{display:none;}
+  #app.ready{display:flex;min-height:100vh;}
+
+  .sidebar{width:300px;flex:none;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;}
+  .sidebar-head{padding:22px 22px 16px;border-bottom:1px solid var(--line);}
+  .sidebar-head .logo{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy);margin-bottom:4px;}
+  .sidebar-head .course-name{font-size:13px;color:var(--slate);}
+  .progress-wrap{padding:16px 22px;border-bottom:1px solid var(--line);}
+  .progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--slate);margin-bottom:8px;font-weight:600;}
+  .progress-bar{height:8px;background:var(--line);border-radius:100px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--gold);border-radius:100px;transition:width .3s;}
+
+  .nav-scroll{flex:1;overflow-y:auto;padding:10px 0;}
+  .nav-item-special{display:flex;align-items:center;gap:10px;padding:12px 22px;font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;background:var(--bg);margin:0 12px 8px;border-radius:9px;}
+  .nav-item-special.active{background:var(--navy);color:#fff;}
+  .chapter{margin-bottom:4px;}
+  .chapter-title{padding:11px 22px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--slate);}
+  .lesson-item{display:flex;align-items:center;gap:10px;padding:10px 22px 10px 30px;font-size:13.5px;color:var(--ink);cursor:pointer;border-left:3px solid transparent;}
+  .lesson-item:hover{background:var(--bg);}
+  .lesson-item.active{background:#EAF0FB;border-left-color:var(--blue);font-weight:600;}
+  .lesson-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .lesson-check.done{background:var(--success);border-color:var(--success);color:#fff;}
+
+  .sidebar-foot{padding:16px 22px;border-top:1px solid var(--line);}
+  .logout-btn{width:100%;padding:10px;border-radius:8px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-size:13px;font-weight:600;}
+
+  .main{flex:1;padding:36px 44px;max-width:920px;}
+  .video-wrap{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:16/9;margin-bottom:26px;}
+  .video-wrap iframe, .video-wrap video{width:100%;height:100%;border:none;}
+  .video-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#8C9AB8;font-size:14px;}
+
+  .lesson-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+  .lesson-head h1{font-size:22px;font-weight:800;color:var(--navy);}
+  .complete-btn{background:var(--blue);color:#fff;border:none;padding:11px 20px;border-radius:9px;font-weight:700;font-family:'Sora',sans-serif;font-size:13px;white-space:nowrap;}
+  .complete-btn.done{background:var(--success);}
+
+  .lesson-desc{color:var(--slate);font-size:14.5px;line-height:1.7;margin-bottom:24px;}
+  .links-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;}
+  .links-card h3{font-size:13.5px;font-weight:700;color:var(--navy);margin-bottom:12px;}
+  .links-card a{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--blue);font-weight:600;padding:8px 0;border-top:1px solid var(--line);}
+  .links-card a:first-of-type{border-top:none;}
+
+  .empty-course{text-align:center;padding:80px 20px;color:var(--slate);}
+  .empty-course a{color:var(--blue);font-weight:700;}
+
+  @media(max-width:900px){
+    .sidebar{position:fixed;left:-300px;top:0;bottom:0;z-index:100;transition:left .2s;}
+    .sidebar.open{left:0;}
+    .main{padding:20px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="spinner"></div>
+  <div>Cargando tu curso...</div>
+</div>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">GMAX Insurance Academy</div>
+      <div class="course-name" id="courseName">—</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Tu progreso</span><span id="progressPct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+    </div>
+    <div class="nav-scroll" id="navScroll"></div>
+    <div class="sidebar-foot">
+      <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main" id="mainArea">
+    <!-- contenido inyectado por JS -->
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dCutSlRXT1IbMMXLOc4RYw__ztiQBE4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentCourse = null;
+let allLessons = []; // lista plana: {id, title, video_url, description, resource_links, type: 'intro'|'lesson'|'outro', chapterTitle}
+let progressMap = {}; // lesson_id -> completed bool
+let activeItemIndex = 0;
+
+function showGateMessage(html, showLogout){
+  document.getElementById('gate').innerHTML = `
+    <div style="max-width:360px;">
+      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:18px;margin-bottom:10px;">GMAX Insurance Academy</div>
+      <div style="color:#C6D2E8;font-size:14.5px;line-height:1.6;">${html}</div>
+      ${showLogout ? '<button class="gate-btn" onclick="doLogout()">Ir a iniciar sesión</button>' : ''}
+    </div>`;
+}
+
+window.doLogout = async function(){
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+};
+
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ window.location.href = 'login.html'; return; }
+  currentUser = session.user;
+
+  // Verifica que este sea el dispositivo activo (control de 1 sesión a la vez)
+  const localToken = localStorage.getItem('gmax_session_token');
+  const { data: sessionRow } = await sb.from('active_sessions').select('session_token').eq('user_id', currentUser.id).single();
+  if (sessionRow && localToken && sessionRow.session_token !== localToken){
+    showGateMessage('Tu sesión se abrió en otro dispositivo. Por seguridad, solo se puede ver el curso desde un dispositivo a la vez.', true);
+    return;
+  }
+
+  await loadEnrollments();
+}
+
+async function loadEnrollments(){
+  const { data: enrollments } = await sb
+    .from('enrollments')
+    .select('*, courses(*)')
+    .eq('user_id', currentUser.id)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .order('starts_at', {ascending:false});
+
+  if (!enrollments || enrollments.length === 0){
+    showGateMessage('Todavía no tienes ningún curso activo, o tu acceso venció. <br><br><a href="index.html#catalogo" style="color:var(--gold);font-weight:700;">Ver catálogo de cursos →</a>', false);
+    return;
+  }
+
+  currentCourse = enrollments[0].courses;
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.add('ready');
+  document.getElementById('courseName').textContent = currentCourse.title;
+
+  await loadCourseContent();
+}
+
+async function loadCourseContent(){
+  const { data: chapters } = await sb
+    .from('chapters').select('*, lessons(*)')
+    .eq('course_id', currentCourse.id)
+    .order('position');
+
+  allLessons = [];
+  if (currentCourse.intro_video_url){
+    allLessons.push({ id:'intro', title:'Video de Bienvenida', video_url: currentCourse.intro_video_url, description:'Antes de empezar, mira este mensaje de bienvenida al curso.', resource_links:[], type:'intro' });
+  }
+  (chapters||[]).sort((a,b)=>a.position-b.position).forEach(ch => {
+    (ch.lessons||[]).sort((a,b)=>a.position-b.position).forEach(l => {
+      allLessons.push({ id:l.id, title:l.title, video_url:l.video_url, description:l.description, resource_links:l.resource_links||[], type:'lesson', chapterTitle: ch.title });
+    });
+  });
+  if (currentCourse.outro_video_url){
+    allLessons.push({ id:'outro', title:'Video de Despedida', video_url: currentCourse.outro_video_url, description:'¡Felicidades por completar el curso! Mira este mensaje final.', resource_links:[], type:'outro' });
+  }
+
+  const realLessonIds = allLessons.filter(l=>l.type==='lesson').map(l=>l.id);
+  if (realLessonIds.length){
+    const { data: progress } = await sb.from('lesson_progress').select('lesson_id, completed').eq('user_id', currentUser.id).in('lesson_id', realLessonIds);
+    progressMap = {};
+    (progress||[]).forEach(p => { progressMap[p.lesson_id] = p.completed; });
+  }
+
+  renderSidebar();
+  selectItem(0);
+}
+
+function renderSidebar(){
+  const nav = document.getElementById('navScroll');
+  let html = '';
+  let lastChapter = null;
+  allLessons.forEach((item, idx) => {
+    if (item.type === 'intro' || item.type === 'outro'){
+      html += `<div class="nav-item-special" data-idx="${idx}" onclick="selectItem(${idx})">${item.type==='intro' ? '🎬' : '🏁'} ${item.title}</div>`;
+    } else {
+      if (item.chapterTitle !== lastChapter){
+        html += `<div class="chapter-title">${item.chapterTitle}</div>`;
+        lastChapter = item.chapterTitle;
+      }
+      const done = progressMap[item.id];
+      html += `
+        <div class="lesson-item" data-idx="${idx}" onclick="selectItem(${idx})">
+          <span class="lesson-check ${done?'done':''}">${done?'✓':''}</span>
+          <span>${item.title}</span>
+        </div>`;
+    }
+  });
+  nav.innerHTML = html;
+  updateProgressBar();
+}
+
+function updateProgressBar(){
+  const lessons = allLessons.filter(l=>l.type==='lesson');
+  const done = lessons.filter(l=>progressMap[l.id]).length;
+  const pct = lessons.length ? Math.round((done/lessons.length)*100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+window.selectItem = function(idx){
+  activeItemIndex = idx;
+  document.querySelectorAll('.lesson-item, .nav-item-special').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`[data-idx="${idx}"]`);
+  if (el) el.classList.add('active');
+  renderMain(allLessons[idx]);
+};
+
+function videoEmbed(url){
+  if (!url) return '<div class="video-placeholder">Todavía no se ha subido el video de esta lección.</div>';
+  return `<iframe src="${url}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+}
+
+function renderMain(item){
+  const main = document.getElementById('mainArea');
+  const isRealLesson = item.type === 'lesson';
+  const done = isRealLesson && progressMap[item.id];
+
+  const linksHtml = (item.resource_links && item.resource_links.length)
+    ? `<div class="links-card"><h3>Links recomendados para esta clase</h3>${item.resource_links.map(l => `<a href="${l.url}" target="_blank">🔗 ${l.label || l.url}</a>`).join('')}</div>`
+    : '';
+
+  main.innerHTML = `
+    <div class="video-wrap">${videoEmbed(item.video_url)}</div>
+    <div class="lesson-head">
+      <h1>${item.title}</h1>
+      ${isRealLesson ? `<button class="complete-btn ${done?'done':''}" id="completeBtn">${done ? '✓ Completada' : 'Marcar como completada'}</button>` : ''}
+    </div>
+    <p class="lesson-desc">${item.description || 'Sin descripción todavía.'}</p>
+    ${linksHtml}
+  `;
+
+  if (isRealLesson){
+    document.getElementById('completeBtn').addEventListener('click', () => toggleComplete(item.id));
+  }
+}
+
+async function toggleComplete(lessonId){
+  const newVal = !progressMap[lessonId];
+  await sb.from('lesson_progress').upsert({
+    user_id: currentUser.id, lesson_id: lessonId, completed: newVal, updated_at: new Date().toISOString()
+  });
+  progressMap[lessonId] = newVal;
+  renderSidebar();
+  document.querySelector(`[data-idx="${activeItemIndex}"]`).classList.add('active');
+  renderMain(allLessons[activeItemIndex]);
+}
+
+document.getElementById('logoutBtn').addEventListener('click', doLogout);
+
+init();
+</script>
+</body>
+</html>
