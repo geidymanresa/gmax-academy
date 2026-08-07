@@ -140,6 +140,7 @@
     <div class="navitem" data-view="cursos">🎓 &nbsp;Cursos</div>
     <div class="navitem" data-view="cupones">🏷️ &nbsp;Cupones</div>
     <div class="navitem" data-view="recursos">📄 &nbsp;Recursos Gratis</div>
+    <div class="navitem" data-view="materiales">💰 &nbsp;Materiales de Pago</div>
     <div class="navitem" data-view="leads">👥 &nbsp;Leads</div>
     <div class="sidebar-foot">
       <div class="who"><b id="whoName">—</b><span id="whoRole">—</span></div>
@@ -207,6 +208,20 @@
         <table>
           <thead><tr><th>Recurso</th><th>Estado</th><th></th></tr></thead>
           <tbody id="resourcesBody"><tr><td colspan="3" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- MATERIALES DE PAGO -->
+    <section id="view-materiales" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Materiales de Pago</h1><p>Descargables sueltos que se venden aparte de los cursos (resúmenes, guías, plantillas).</p></div>
+        <button class="btn btn-gold" id="newMaterialBtn">+ Nuevo Material</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Material</th><th>Precio</th><th>Estado</th><th>Compras</th><th></th></tr></thead>
+          <tbody id="materialsBody"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -307,6 +322,30 @@
   </div>
 </div>
 
+<!-- MODAL: MATERIAL DE PAGO -->
+<div class="modal-overlay" id="materialModal">
+  <div class="modal" style="max-width:480px;">
+    <h2 id="materialModalTitle">Nuevo material de pago</h2>
+    <div class="msg-inline" id="materialMsg"></div>
+    <div class="form-row"><label>Título</label><input type="text" id="materialTitle" placeholder="Ej. Resumen: Guía Rápida de Pólizas Auto"></div>
+    <div class="form-row"><label>Descripción</label><textarea id="materialDesc" placeholder="Qué incluye este material"></textarea></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Precio (USD)</label><input type="number" id="materialPrice" placeholder="15"></div>
+      <div class="form-row"><label>Estado</label>
+        <select id="materialStatus">
+          <option value="draft">Borrador</option>
+          <option value="published">Publicado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Link del archivo (PDF, etc.)</label><input type="text" id="materialFileUrl" placeholder="https://..."></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelMaterialBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveMaterialBtn">Guardar material</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -360,6 +399,7 @@ document.querySelectorAll('.navitem').forEach(item=>{
     if(view==='cursos') loadCourses();
     if(view==='cupones') loadCoupons();
     if(view==='recursos') loadResources();
+    if(view==='materiales') loadMaterials();
     if(view==='leads') loadLeads();
   });
 });
@@ -728,6 +768,92 @@ document.getElementById('saveResourceBtn').addEventListener('click', async ()=>{
   resourceModal.classList.remove('open');
   toast('Recurso creado ✓');
   loadResources();
+});
+
+// ---------- MATERIALES DE PAGO ----------
+async function loadMaterials(){
+  const { data: materials, error } = await sb.from('materials').select('*').order('created_at', {ascending:false});
+  const body = document.getElementById('materialsBody');
+  if (error || !materials || materials.length === 0){
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">No has creado ningún material de pago todavía.</td></tr>';
+    return;
+  }
+  const rows = await Promise.all(materials.map(async m => {
+    const { count } = await sb.from('material_purchases').select('*', {count:'exact', head:true}).eq('material_id', m.id);
+    return `<tr>
+      <td><b>${m.title}</b></td>
+      <td>$${(m.price_cents/100).toFixed(0)}</td>
+      <td><span class="badge badge-${m.status==='published'?'published':'draft'}">${m.status==='published'?'Publicado':'Borrador'}</span></td>
+      <td>${count ?? 0}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="editMaterial('${m.id}')">Editar</button>
+        <button class="btn btn-sm ${m.status==='published' ? 'btn-danger' : 'btn-gold'}" onclick="toggleMaterialStatus('${m.id}','${m.status}')">${m.status==='published' ? 'Despublicar' : 'Publicar'}</button>
+      </td>
+    </tr>`;
+  }));
+  body.innerHTML = rows.join('');
+}
+
+window.toggleMaterialStatus = async function(id, currentStatus){
+  const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+  await sb.from('materials').update({ status: newStatus }).eq('id', id);
+  toast(newStatus === 'published' ? 'Material publicado ✓' : 'Material pasado a borrador');
+  loadMaterials();
+};
+
+let editingMaterialId = null;
+const materialModal = document.getElementById('materialModal');
+
+document.getElementById('newMaterialBtn').addEventListener('click', ()=>{
+  editingMaterialId = null;
+  document.getElementById('materialModalTitle').textContent = 'Nuevo material de pago';
+  document.getElementById('materialTitle').value = '';
+  document.getElementById('materialDesc').value = '';
+  document.getElementById('materialPrice').value = '';
+  document.getElementById('materialStatus').value = 'draft';
+  document.getElementById('materialFileUrl').value = '';
+  document.getElementById('materialMsg').className = 'msg-inline';
+  materialModal.classList.add('open');
+});
+document.getElementById('cancelMaterialBtn').addEventListener('click', ()=> materialModal.classList.remove('open'));
+
+window.editMaterial = async function(id){
+  const { data: m } = await sb.from('materials').select('*').eq('id', id).single();
+  if (!m){ toast('No se pudo cargar el material', true); return; }
+  editingMaterialId = id;
+  document.getElementById('materialModalTitle').textContent = 'Editar material';
+  document.getElementById('materialTitle').value = m.title;
+  document.getElementById('materialDesc').value = m.description || '';
+  document.getElementById('materialPrice').value = (m.price_cents/100);
+  document.getElementById('materialStatus').value = m.status;
+  document.getElementById('materialFileUrl').value = m.file_url || '';
+  document.getElementById('materialMsg').className = 'msg-inline';
+  materialModal.classList.add('open');
+};
+
+document.getElementById('saveMaterialBtn').addEventListener('click', async ()=>{
+  const title = document.getElementById('materialTitle').value.trim();
+  const desc = document.getElementById('materialDesc').value.trim();
+  const price = parseFloat(document.getElementById('materialPrice').value || '0');
+  const status = document.getElementById('materialStatus').value;
+  const fileUrl = document.getElementById('materialFileUrl').value.trim();
+  const msgEl = document.getElementById('materialMsg');
+
+  if (!title || !fileUrl){ msgEl.textContent = 'Título y link del archivo son obligatorios.'; msgEl.className = 'msg-inline error show'; return; }
+
+  const payload = { title, description: desc, price_cents: Math.round(price*100), status, file_url: fileUrl };
+
+  let error;
+  if (editingMaterialId){
+    ({ error } = await sb.from('materials').update(payload).eq('id', editingMaterialId));
+  } else {
+    ({ error } = await sb.from('materials').insert(payload));
+  }
+  if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className = 'msg-inline error show'; return; }
+
+  materialModal.classList.remove('open');
+  toast('Material guardado ✓');
+  loadMaterials();
 });
 
 // ---------- LEADS ----------
