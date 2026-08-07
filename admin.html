@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Administrador — GMAX Insurance Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0F2447; --blue:#1E4C9A; --blue-light:#2E5FB8;
+    --gold:#F0B429; --gold-dark:#D69A1C;
+    --bg:#F5F7FB; --ink:#12294F; --slate:#5A6478; --line:#E1E5EF; --white:#FFFFFF;
+    --error:#D64545; --success:#2A7A3B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);}
+  h1,h2,h3,.display{font-family:'Sora',sans-serif;}
+  a{text-decoration:none;color:inherit;}
+  button{font-family:'Inter',sans-serif;cursor:pointer;}
+
+  /* GATE / LOADING */
+  #gate{position:fixed;inset:0;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:999;font-family:'Sora',sans-serif;}
+  #gate.hidden{display:none;}
+  .spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* LAYOUT */
+  #app{display:none;}
+  #app.ready{display:flex;min-height:100vh;}
+  .sidebar{width:240px;flex:none;background:var(--navy);color:#fff;display:flex;flex-direction:column;padding:24px 0;}
+  .sidebar .logo{font-family:'Sora',sans-serif;font-weight:800;font-size:19px;padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:18px;}
+  .sidebar .logo span{display:block;color:var(--gold);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-top:3px;}
+  .navitem{display:flex;align-items:center;gap:12px;padding:12px 24px;font-size:14px;font-weight:600;color:#B7C2DA;cursor:pointer;border-left:3px solid transparent;transition:background .15s;}
+  .navitem:hover{background:rgba(255,255,255,.05);}
+  .navitem.active{background:rgba(255,255,255,.08);color:#fff;border-left-color:var(--gold);}
+  .navitem svg{flex:none;}
+  .sidebar-foot{margin-top:auto;padding:16px 24px 0;border-top:1px solid rgba(255,255,255,.1);}
+  .who{font-size:13px;color:#B7C2DA;margin-bottom:10px;}
+  .who b{color:#fff;display:block;font-size:14px;}
+  .logout-btn{width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.08);color:#fff;border:none;font-size:13px;font-weight:600;}
+  .logout-btn:hover{background:rgba(255,255,255,.14);}
+
+  .main{flex:1;padding:36px 40px;max-width:1200px;}
+  .page-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+  .page-head h1{font-size:26px;font-weight:800;color:var(--navy);}
+  .page-head p{color:var(--slate);font-size:14px;margin-top:4px;}
+
+  .btn{font-family:'Sora',sans-serif;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:9px;border:none;display:inline-flex;align-items:center;gap:8px;transition:transform .15s;}
+  .btn:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-gold{background:var(--gold);color:var(--navy);}
+  .btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);}
+  .btn-danger{background:#FCE9E9;color:var(--error);}
+  .btn-sm{padding:7px 14px;font-size:12.5px;}
+
+  /* STAT CARDS */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:32px;}
+  .stat-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;}
+  .stat-card .label{font-size:12.5px;color:var(--slate);font-weight:600;margin-bottom:8px;}
+  .stat-card .value{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--navy);}
+
+  /* TABLE */
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:24px;}
+  .card-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .card-head h3{font-size:15.5px;font-weight:700;color:var(--navy);}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--slate);font-weight:700;padding:12px 22px;background:var(--bg);}
+  td{padding:14px 22px;font-size:13.5px;border-top:1px solid var(--line);color:var(--ink);}
+  tr:hover td{background:#FAFBFD;}
+  .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.02em;}
+  .badge-published{background:#E8F3EA;color:var(--success);}
+  .badge-draft{background:#F0F1F5;color:var(--slate);}
+  .badge-archived{background:#FCE9E9;color:var(--error);}
+  .empty-state{padding:50px 22px;text-align:center;color:var(--slate);font-size:14px;}
+
+  /* MODAL / FORM */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,36,71,.55);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:18px;width:100%;max-width:680px;padding:32px;}
+  .modal h2{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:22px;}
+  .form-row{margin-bottom:16px;}
+  .form-row label{font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:var(--navy);display:block;margin-bottom:6px;}
+  .form-row input,.form-row textarea,.form-row select{
+    width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:'Inter',sans-serif;
+  }
+  .form-row textarea{resize:vertical;min-height:70px;}
+  .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
+
+  .chapter-block{border:1.5px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--bg);}
+  .chapter-block .ch-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}
+  .chapter-block input.ch-title{flex:1;font-weight:700;font-family:'Sora',sans-serif;}
+  .lesson-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .lesson-row input{flex:1;}
+  .lesson-row input.lesson-title{flex:2;}
+  .icon-btn{background:none;border:none;color:var(--error);font-size:16px;padding:4px 8px;border-radius:6px;}
+  .icon-btn:hover{background:#FCE9E9;}
+  .add-link{font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:var(--blue);background:none;border:none;padding:6px 0;}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:14px 20px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:300;display:none;}
+  .toast.show{display:block;}
+  .toast.error{background:var(--error);}
+
+  .msg-inline{font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:14px;display:none;}
+  .msg-inline.show{display:block;}
+  .msg-inline.error{background:#FCE9E9;color:var(--error);}
+  .msg-inline.ok{background:#E8F3EA;color:var(--success);}
+
+  @media(max-width:900px){
+    .sidebar{position:fixed;left:-240px;top:0;bottom:0;z-index:150;transition:left .2s;}
+    .sidebar.open{left:0;}
+    .main{padding:24px 16px;}
+    .stats-grid{grid-template-columns:1fr 1fr;}
+    .form-grid-2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="spinner"></div>
+  <div>Verificando acceso...</div>
+</div>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="logo">GMAX <span>Panel Admin</span></div>
+    <div class="navitem active" data-view="dashboard">📊 &nbsp;Dashboard</div>
+    <div class="navitem" data-view="cursos">🎓 &nbsp;Cursos</div>
+    <div class="navitem" data-view="cupones">🏷️ &nbsp;Cupones</div>
+    <div class="navitem" data-view="recursos">📄 &nbsp;Recursos Gratis</div>
+    <div class="navitem" data-view="leads">👥 &nbsp;Leads</div>
+    <div class="sidebar-foot">
+      <div class="who"><b id="whoName">—</b><span id="whoRole">—</span></div>
+      <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="page-head">
+        <div><h1>Dashboard</h1><p>Resumen general de la academia.</p></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Cursos publicados</div><div class="value" id="statCourses">—</div></div>
+        <div class="stat-card"><div class="label">Inscripciones activas</div><div class="value" id="statEnrollments">—</div></div>
+        <div class="stat-card"><div class="label">Leads totales</div><div class="value" id="statLeads">—</div></div>
+        <div class="stat-card"><div class="label">Cupones activos</div><div class="value" id="statCoupons">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Leads más recientes</h3></div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Origen</th><th>Fecha</th></tr></thead>
+          <tbody id="recentLeadsBody"><tr><td colspan="4" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CURSOS -->
+    <section id="view-cursos" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Cursos</h1><p>Crea, edita y publica los cursos de la academia.</p></div>
+        <button class="btn btn-gold" id="newCourseBtn">+ Nuevo Curso</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Curso</th><th>Precio</th><th>Estado</th><th>Inscritos</th><th></th></tr></thead>
+          <tbody id="coursesBody"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CUPONES -->
+    <section id="view-cupones" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Cupones</h1><p>Descuentos y accesos gratuitos por tiempo limitado.</p></div>
+        <button class="btn btn-gold" id="newCouponBtn">+ Nuevo Cupón</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Código</th><th>Tipo</th><th>Valor</th><th>Curso</th><th>Usos</th><th>Expira</th><th></th></tr></thead>
+          <tbody id="couponsBody"><tr><td colspan="7" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- RECURSOS GRATIS -->
+    <section id="view-recursos" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Recursos Gratuitos</h1><p>Descargables que capturan leads en la página pública.</p></div>
+        <button class="btn btn-gold" id="newResourceBtn">+ Nuevo Recurso</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Recurso</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="resourcesBody"><tr><td colspan="3" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LEADS -->
+    <section id="view-leads" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Leads</h1><p>Personas interesadas: descargables, carritos abandonados y listas de espera.</p></div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Ciudad/Estado</th><th>Origen</th><th>Fecha</th></tr></thead>
+          <tbody id="leadsBody"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: CURSO -->
+<div class="modal-overlay" id="courseModal">
+  <div class="modal">
+    <h2 id="courseModalTitle">Nuevo curso</h2>
+    <div class="msg-inline" id="courseMsg"></div>
+    <div class="form-row"><label>Título del curso</label><input type="text" id="courseTitle" placeholder="Ej. Crea Tu Propia Agencia de Seguros en Texas"></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Precio (USD)</label><input type="number" id="coursePrice" placeholder="257"></div>
+      <div class="form-row"><label>Días de acceso</label><input type="number" id="courseAccessDays" value="90"></div>
+    </div>
+    <div class="form-row"><label>Descripción corta (catálogo)</label><textarea id="courseShortDesc" placeholder="1-2 líneas que aparecen en la tarjeta del catálogo"></textarea></div>
+    <div class="form-row"><label>Descripción completa (página del producto)</label><textarea id="courseFullDesc" placeholder="Descripción detallada del curso"></textarea></div>
+    <div class="form-row"><label>Estado</label>
+      <select id="courseStatus">
+        <option value="draft">Borrador (no visible al público)</option>
+        <option value="published">Publicado</option>
+        <option value="archived">Archivado</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Contenido del curso (capítulos y lecciones)</label>
+      <div id="chaptersContainer"></div>
+      <button type="button" class="add-link" id="addChapterBtn">+ Agregar capítulo</button>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelCourseBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveCourseBtn">Guardar curso</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CUPON -->
+<div class="modal-overlay" id="couponModal">
+  <div class="modal" style="max-width:480px;">
+    <h2>Nuevo cupón</h2>
+    <div class="msg-inline" id="couponMsg"></div>
+    <div class="form-row"><label>Código</label><input type="text" id="couponCode" placeholder="Ej. LANZAMIENTO20" style="text-transform:uppercase;"></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Tipo</label>
+        <select id="couponType">
+          <option value="percent">Porcentaje (%)</option>
+          <option value="fixed">Monto fijo ($)</option>
+          <option value="free_access">Acceso 100% gratis</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Valor</label><input type="number" id="couponValue" placeholder="20"></div>
+    </div>
+    <div class="form-row"><label>Aplica a</label><select id="couponCourse"><option value="">Todos los cursos</option></select></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Usos máximos (opcional)</label><input type="number" id="couponMaxUses" placeholder="Ilimitado"></div>
+      <div class="form-row"><label>Expira el (opcional)</label><input type="date" id="couponExpires"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelCouponBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveCouponBtn">Guardar cupón</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RECURSO GRATIS -->
+<div class="modal-overlay" id="resourceModal">
+  <div class="modal" style="max-width:480px;">
+    <h2>Nuevo recurso gratuito</h2>
+    <div class="msg-inline" id="resourceMsg"></div>
+    <div class="form-row"><label>Título</label><input type="text" id="resourceTitle" placeholder="Ej. Checklist: Requisitos de licencia en Texas"></div>
+    <div class="form-row"><label>Descripción</label><textarea id="resourceDesc"></textarea></div>
+    <div class="form-row"><label>Link del archivo (PDF, etc.)</label><input type="text" id="resourceFileUrl" placeholder="https://..."></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelResourceBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveResourceBtn">Guardar recurso</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dCutSlRXT1IbMMXLOc4RYw__ztiQBE4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let editingCourseId = null;
+let chapterCount = 0;
+
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(()=>{ t.className='toast'; }, 3500);
+}
+
+// ---------- AUTH GATE ----------
+async function checkAccess(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ window.location.href = 'login.html'; return; }
+
+  const { data: profile, error } = await sb.from('profiles').select('role, full_name').eq('id', session.user.id).single();
+  if (error || !profile || (profile.role !== 'admin' && profile.role !== 'super_admin')){
+    window.location.href = 'login.html';
+    return;
+  }
+  currentUser = { id: session.user.id, name: profile.full_name || session.user.email, role: profile.role };
+  document.getElementById('whoName').textContent = currentUser.name;
+  document.getElementById('whoRole').textContent = currentUser.role === 'super_admin' ? 'Administradora Principal' : 'Administrador';
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.add('ready');
+  loadDashboard();
+}
+checkAccess();
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+});
+
+// ---------- NAV ----------
+document.querySelectorAll('.navitem').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.navitem').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+    const view = item.dataset.view;
+    document.getElementById('view-'+view).style.display='block';
+    if(view==='cursos') loadCourses();
+    if(view==='cupones') loadCoupons();
+    if(view==='recursos') loadResources();
+    if(view==='leads') loadLeads();
+  });
+});
+
+// ---------- DASHBOARD ----------
+async function loadDashboard(){
+  const { count: courseCount } = await sb.from('courses').select('*', {count:'exact', head:true}).eq('status','published');
+  const { count: enrollCount } = await sb.from('enrollments').select('*', {count:'exact', head:true}).eq('status','active');
+  const { count: leadCount } = await sb.from('leads').select('*', {count:'exact', head:true});
+  const { count: couponCount } = await sb.from('coupons').select('*', {count:'exact', head:true}).eq('active', true);
+
+  document.getElementById('statCourses').textContent = courseCount ?? 0;
+  document.getElementById('statEnrollments').textContent = enrollCount ?? 0;
+  document.getElementById('statLeads').textContent = leadCount ?? 0;
+  document.getElementById('statCoupons').textContent = couponCount ?? 0;
+
+  const { data: recentLeads } = await sb.from('leads').select('*').order('created_at', {ascending:false}).limit(6);
+  const body = document.getElementById('recentLeadsBody');
+  if (!recentLeads || recentLeads.length === 0){
+    body.innerHTML = '<tr><td colspan="4" class="empty-state">Todavía no hay leads registrados.</td></tr>';
+  } else {
+    body.innerHTML = recentLeads.map(l => `
+      <tr><td>${l.full_name || '—'}</td><td>${l.email}</td><td>${sourceLabel(l.source)}</td><td>${formatDate(l.created_at)}</td></tr>
+    `).join('');
+  }
+}
+
+function sourceLabel(s){
+  const map = { free_resource:'Descargable gratis', abandoned_cart:'Carrito abandonado', course_waitlist:'Lista de espera', manual:'Manual', other:'Otro' };
+  return map[s] || s;
+}
+function formatDate(d){
+  return new Date(d).toLocaleDateString('es-US', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ---------- CURSOS ----------
+async function loadCourses(){
+  const { data: courses, error } = await sb.from('courses').select('*').order('created_at', {ascending:false});
+  const body = document.getElementById('coursesBody');
+  if (error || !courses || courses.length === 0){
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">Todavía no has creado ningún curso. Dale a "+ Nuevo Curso" para empezar.</td></tr>';
+    return;
+  }
+  const rows = await Promise.all(courses.map(async c => {
+    const { count } = await sb.from('enrollments').select('*', {count:'exact', head:true}).eq('course_id', c.id);
+    return `<tr>
+      <td><b>${c.title}</b></td>
+      <td>$${(c.price_cents/100).toFixed(0)}</td>
+      <td><span class="badge badge-${c.status}">${statusLabel(c.status)}</span></td>
+      <td>${count ?? 0}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="editCourse('${c.id}')">Editar</button>
+        <button class="btn btn-sm ${c.status==='published' ? 'btn-danger' : 'btn-gold'}" onclick="toggleCourseStatus('${c.id}','${c.status}')">${c.status==='published' ? 'Despublicar' : 'Publicar'}</button>
+      </td>
+    </tr>`;
+  }));
+  body.innerHTML = rows.join('');
+}
+function statusLabel(s){ return { draft:'Borrador', published:'Publicado', archived:'Archivado' }[s] || s; }
+
+async function toggleCourseStatus(id, currentStatus){
+  const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+  const { error } = await sb.from('courses').update({ status: newStatus }).eq('id', id);
+  if (error){ toast('Error al actualizar el curso', true); return; }
+  toast(newStatus === 'published' ? 'Curso publicado ✓' : 'Curso pasado a borrador');
+  loadCourses();
+}
+
+// ---- Course modal: open/close ----
+const courseModal = document.getElementById('courseModal');
+document.getElementById('newCourseBtn').addEventListener('click', ()=> openCourseModal());
+document.getElementById('cancelCourseBtn').addEventListener('click', ()=> courseModal.classList.remove('open'));
+
+function openCourseModal(){
+  editingCourseId = null;
+  document.getElementById('courseModalTitle').textContent = 'Nuevo curso';
+  document.getElementById('courseTitle').value = '';
+  document.getElementById('coursePrice').value = '';
+  document.getElementById('courseAccessDays').value = '90';
+  document.getElementById('courseShortDesc').value = '';
+  document.getElementById('courseFullDesc').value = '';
+  document.getElementById('courseStatus').value = 'draft';
+  document.getElementById('chaptersContainer').innerHTML = '';
+  chapterCount = 0;
+  document.getElementById('courseMsg').className = 'msg-inline';
+  courseModal.classList.add('open');
+}
+
+window.editCourse = async function(id){
+  const { data: course } = await sb.from('courses').select('*').eq('id', id).single();
+  if (!course){ toast('No se pudo cargar el curso', true); return; }
+  editingCourseId = id;
+  document.getElementById('courseModalTitle').textContent = 'Editar curso';
+  document.getElementById('courseTitle').value = course.title;
+  document.getElementById('coursePrice').value = (course.price_cents/100);
+  document.getElementById('courseAccessDays').value = course.access_days;
+  document.getElementById('courseShortDesc').value = course.short_description || '';
+  document.getElementById('courseFullDesc').value = course.description || '';
+  document.getElementById('courseStatus').value = course.status;
+  document.getElementById('chaptersContainer').innerHTML = '';
+  chapterCount = 0;
+
+  const { data: chapters } = await sb.from('chapters').select('*, lessons(*)').eq('course_id', id).order('position');
+  (chapters || []).forEach(ch => {
+    addChapterBlock(ch.title, (ch.lessons || []).sort((a,b)=>a.position-b.position));
+  });
+
+  document.getElementById('courseMsg').className = 'msg-inline';
+  courseModal.classList.add('open');
+};
+
+// ---- Chapter/lesson builder ----
+document.getElementById('addChapterBtn').addEventListener('click', ()=> addChapterBlock('', []));
+
+function addChapterBlock(title, lessons){
+  chapterCount++;
+  const chId = 'ch_' + chapterCount;
+  const div = document.createElement('div');
+  div.className = 'chapter-block';
+  div.id = chId;
+  div.innerHTML = `
+    <div class="ch-head">
+      <input type="text" class="ch-title" placeholder="Nombre del capítulo" value="${escapeHtml(title)}">
+      <button type="button" class="icon-btn" onclick="document.getElementById('${chId}').remove()">✕</button>
+    </div>
+    <div class="lessons-list"></div>
+    <button type="button" class="add-link" onclick="addLessonRow('${chId}')">+ Agregar lección</button>
+  `;
+  document.getElementById('chaptersContainer').appendChild(div);
+  const list = div.querySelector('.lessons-list');
+  if (lessons && lessons.length){
+    lessons.forEach(l => addLessonRowEl(list, l.title, l.video_url));
+  } else {
+    addLessonRowEl(list, '', '');
+  }
+}
+
+window.addLessonRow = function(chId){
+  const list = document.querySelector('#' + chId + ' .lessons-list');
+  addLessonRowEl(list, '', '');
+};
+
+function addLessonRowEl(list, title, videoUrl){
+  const row = document.createElement('div');
+  row.className = 'lesson-row';
+  row.innerHTML = `
+    <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(title||'')}">
+    <input type="text" class="lesson-video" placeholder="Link del video (Bunny.net)" value="${escapeHtml(videoUrl||'')}">
+    <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---- Save course ----
+document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
+  const title = document.getElementById('courseTitle').value.trim();
+  const price = parseFloat(document.getElementById('coursePrice').value || '0');
+  const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
+  const shortDesc = document.getElementById('courseShortDesc').value.trim();
+  const fullDesc = document.getElementById('courseFullDesc').value.trim();
+  const status = document.getElementById('courseStatus').value;
+
+  const msgEl = document.getElementById('courseMsg');
+  if (!title){ msgEl.textContent = 'El título es obligatorio.'; msgEl.className = 'msg-inline error show'; return; }
+
+  const slug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+  let courseId = editingCourseId;
+  const payload = {
+    title, slug, price_cents: Math.round(price*100), access_days: accessDays,
+    short_description: shortDesc, description: fullDesc, status,
+    created_by: currentUser.id
+  };
+
+  if (courseId){
+    const { error } = await sb.from('courses').update(payload).eq('id', courseId);
+    if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
+    await sb.from('chapters').delete().eq('course_id', courseId);
+  } else {
+    const { data, error } = await sb.from('courses').insert(payload).select().single();
+    if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
+    courseId = data.id;
+  }
+
+  const chapterBlocks = document.querySelectorAll('#chaptersContainer .chapter-block');
+  let chPos = 0;
+  for (const block of chapterBlocks){
+    const chTitle = block.querySelector('.ch-title').value.trim();
+    if (!chTitle) continue;
+    const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
+    if (chErr) continue;
+    chPos++;
+    let lessonPos = 0;
+    const lessonRows = block.querySelectorAll('.lesson-row');
+    for (const row of lessonRows){
+      const lTitle = row.querySelector('.lesson-title').value.trim();
+      const lVideo = row.querySelector('.lesson-video').value.trim();
+      if (!lTitle) continue;
+      await sb.from('lessons').insert({ chapter_id: chData.id, title: lTitle, video_url: lVideo, position: lessonPos, content_type:'video' });
+      lessonPos++;
+    }
+  }
+
+  courseModal.classList.remove('open');
+  toast('Curso guardado ✓');
+  loadCourses();
+  loadDashboard();
+});
+
+// ---------- CUPONES ----------
+async function loadCoupons(){
+  const { data: courses } = await sb.from('courses').select('id, title');
+  const sel = document.getElementById('couponCourse');
+  sel.innerHTML = '<option value="">Todos los cursos</option>' + (courses||[]).map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
+
+  const { data: coupons, error } = await sb.from('coupons').select('*, courses(title)').order('created_at', {ascending:false});
+  const body = document.getElementById('couponsBody');
+  if (error || !coupons || coupons.length === 0){
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No hay cupones creados todavía.</td></tr>';
+    return;
+  }
+  body.innerHTML = coupons.map(c => `
+    <tr>
+      <td><b>${c.code}</b></td>
+      <td>${couponTypeLabel(c.discount_type)}</td>
+      <td>${c.discount_type==='percent' ? c.discount_value+'%' : c.discount_type==='fixed' ? '$'+c.discount_value : '—'}</td>
+      <td>${c.courses ? c.courses.title : 'Todos'}</td>
+      <td>${c.used_count}${c.max_uses ? ' / '+c.max_uses : ''}</td>
+      <td>${c.expires_at ? formatDate(c.expires_at) : 'Sin expiración'}</td>
+      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${c.id}', ${c.active})">${c.active ? 'Desactivar' : 'Activar'}</button></td>
+    </tr>
+  `).join('');
+}
+function couponTypeLabel(t){ return { percent:'Porcentaje', fixed:'Monto fijo', free_access:'Gratis' }[t] || t; }
+
+window.toggleCoupon = async function(id, active){
+  await sb.from('coupons').update({ active: !active }).eq('id', id);
+  toast('Cupón actualizado ✓');
+  loadCoupons();
+};
+
+const couponModal = document.getElementById('couponModal');
+document.getElementById('newCouponBtn').addEventListener('click', ()=>{
+  document.getElementById('couponCode').value='';
+  document.getElementById('couponType').value='percent';
+  document.getElementById('couponValue').value='';
+  document.getElementById('couponMaxUses').value='';
+  document.getElementById('couponExpires').value='';
+  document.getElementById('couponMsg').className='msg-inline';
+  couponModal.classList.add('open');
+});
+document.getElementById('cancelCouponBtn').addEventListener('click', ()=> couponModal.classList.remove('open'));
+
+document.getElementById('saveCouponBtn').addEventListener('click', async ()=>{
+  const code = document.getElementById('couponCode').value.trim().toUpperCase();
+  const type = document.getElementById('couponType').value;
+  const value = parseFloat(document.getElementById('couponValue').value || '0');
+  const courseId = document.getElementById('couponCourse').value || null;
+  const maxUses = document.getElementById('couponMaxUses').value ? parseInt(document.getElementById('couponMaxUses').value) : null;
+  const expires = document.getElementById('couponExpires').value || null;
+  const msgEl = document.getElementById('couponMsg');
+
+  if (!code){ msgEl.textContent='El código es obligatorio.'; msgEl.className='msg-inline error show'; return; }
+
+  const { error } = await sb.from('coupons').insert({
+    code, discount_type: type, discount_value: value, course_id: courseId,
+    max_uses: maxUses, expires_at: expires, created_by: currentUser.id
+  });
+  if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className='msg-inline error show'; return; }
+
+  couponModal.classList.remove('open');
+  toast('Cupón creado ✓');
+  loadCoupons();
+  loadDashboard();
+});
+
+// ---------- RECURSOS GRATIS ----------
+async function loadResources(){
+  const { data: resources, error } = await sb.from('free_resources').select('*').order('created_at', {ascending:false});
+  const body = document.getElementById('resourcesBody');
+  if (error || !resources || resources.length === 0){
+    body.innerHTML = '<tr><td colspan="3" class="empty-state">No hay recursos gratuitos todavía.</td></tr>';
+    return;
+  }
+  body.innerHTML = resources.map(r => `
+    <tr>
+      <td><b>${r.title}</b></td>
+      <td><span class="badge badge-${r.status==='published'?'published':'draft'}">${r.status==='published'?'Publicado':'Borrador'}</span></td>
+      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="toggleResource('${r.id}','${r.status}')">${r.status==='published'?'Despublicar':'Publicar'}</button></td>
+    </tr>
+  `).join('');
+}
+window.toggleResource = async function(id, status){
+  const newStatus = status==='published' ? 'draft' : 'published';
+  await sb.from('free_resources').update({ status: newStatus }).eq('id', id);
+  toast('Recurso actualizado ✓');
+  loadResources();
+};
+
+const resourceModal = document.getElementById('resourceModal');
+document.getElementById('newResourceBtn').addEventListener('click', ()=>{
+  document.getElementById('resourceTitle').value='';
+  document.getElementById('resourceDesc').value='';
+  document.getElementById('resourceFileUrl').value='';
+  document.getElementById('resourceMsg').className='msg-inline';
+  resourceModal.classList.add('open');
+});
+document.getElementById('cancelResourceBtn').addEventListener('click', ()=> resourceModal.classList.remove('open'));
+
+document.getElementById('saveResourceBtn').addEventListener('click', async ()=>{
+  const title = document.getElementById('resourceTitle').value.trim();
+  const desc = document.getElementById('resourceDesc').value.trim();
+  const fileUrl = document.getElementById('resourceFileUrl').value.trim();
+  const msgEl = document.getElementById('resourceMsg');
+
+  if (!title || !fileUrl){ msgEl.textContent='Título y link del archivo son obligatorios.'; msgEl.className='msg-inline error show'; return; }
+  const slug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+  const { error } = await sb.from('free_resources').insert({ title, description: desc, file_url: fileUrl, slug, status:'published' });
+  if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className='msg-inline error show'; return; }
+
+  resourceModal.classList.remove('open');
+  toast('Recurso creado ✓');
+  loadResources();
+});
+
+// ---------- LEADS ----------
+async function loadLeads(){
+  const { data: leads, error } = await sb.from('leads').select('*').order('created_at', {ascending:false}).limit(200);
+  const body = document.getElementById('leadsBody');
+  if (error || !leads || leads.length === 0){
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">Todavía no hay leads registrados.</td></tr>';
+    return;
+  }
+  body.innerHTML = leads.map(l => `
+    <tr>
+      <td>${l.full_name || '—'}</td>
+      <td>${l.email}</td>
+      <td>${l.phone || '—'}</td>
+      <td>${[l.city, l.state].filter(Boolean).join(', ') || '—'}</td>
+      <td>${sourceLabel(l.source)}</td>
+      <td>${formatDate(l.created_at)}</td>
+    </tr>
+  `).join('');
+}
+</script>
+</body>
+</html>
