@@ -275,6 +275,17 @@
     <h2 id="courseModalTitle">Nuevo curso</h2>
     <div class="msg-inline" id="courseMsg"></div>
     <div class="form-row"><label>Título del curso</label><input type="text" id="courseTitle" placeholder="Ej. Crea Tu Propia Agencia de Seguros en Texas"></div>
+    <div class="form-row">
+      <label>Imagen del curso (portada/logo del curso)</label>
+      <div id="thumbPreviewWrap" style="display:none;margin-bottom:10px;">
+        <img id="thumbPreview" style="width:160px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="courseThumbnail" placeholder="https://... o dale a Subir imagen" style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="uploadThumbBtn" onclick="document.getElementById('thumbFileInput').click()">📤 Subir imagen</button>
+        <input type="file" id="thumbFileInput" accept="image/*" style="display:none;" onchange="uploadCourseThumbnail(this)">
+      </div>
+    </div>
     <div class="form-grid-2">
       <div class="form-row"><label>Precio (USD)</label><input type="number" id="coursePrice" placeholder="257"></div>
       <div class="form-row"><label>Días de acceso</label><input type="number" id="courseAccessDays" value="90"></div>
@@ -523,10 +534,50 @@ const courseModal = document.getElementById('courseModal');
 document.getElementById('newCourseBtn').addEventListener('click', ()=> openCourseModal());
 document.getElementById('cancelCourseBtn').addEventListener('click', ()=> courseModal.classList.remove('open'));
 
+window.uploadCourseThumbnail = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const btn = document.getElementById('uploadThumbBtn');
+  btn.textContent = '⏳ Subiendo...';
+  btn.disabled = true;
+
+  const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `courses/${Date.now()}-${cleanName}`;
+
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){
+    toast('Error subiendo la imagen: ' + error.message, true);
+    btn.textContent = '📤 Subir imagen';
+    btn.disabled = false;
+    return;
+  }
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  document.getElementById('courseThumbnail').value = pub.publicUrl;
+  updateThumbPreview(pub.publicUrl);
+
+  btn.textContent = '✓ Subida';
+  btn.disabled = false;
+  toast('Imagen subida ✓');
+};
+
+function updateThumbPreview(url){
+  const wrap = document.getElementById('thumbPreviewWrap');
+  const img = document.getElementById('thumbPreview');
+  if (url){
+    img.src = url;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+document.getElementById('courseThumbnail').addEventListener('input', (e)=> updateThumbPreview(e.target.value.trim()));
+
 function openCourseModal(){
   editingCourseId = null;
   document.getElementById('courseModalTitle').textContent = 'Nuevo curso';
   document.getElementById('courseTitle').value = '';
+  document.getElementById('courseThumbnail').value = '';
+  updateThumbPreview('');
   document.getElementById('coursePrice').value = '';
   document.getElementById('courseAccessDays').value = '90';
   document.getElementById('courseShortDesc').value = '';
@@ -546,6 +597,8 @@ window.editCourse = async function(id){
   editingCourseId = id;
   document.getElementById('courseModalTitle').textContent = 'Editar curso';
   document.getElementById('courseTitle').value = course.title;
+  document.getElementById('courseThumbnail').value = course.thumbnail_url || '';
+  updateThumbPreview(course.thumbnail_url || '');
   document.getElementById('coursePrice').value = (course.price_cents/100);
   document.getElementById('courseAccessDays').value = course.access_days;
   document.getElementById('courseShortDesc').value = course.short_description || '';
@@ -906,6 +959,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
     const shortDesc = document.getElementById('courseShortDesc').value.trim();
     const fullDesc = document.getElementById('courseFullDesc').value.trim();
+    const thumbnail = document.getElementById('courseThumbnail').value.trim();
     const introVideo = document.getElementById('courseIntroVideo').value.trim();
     const outroVideo = document.getElementById('courseOutroVideo').value.trim();
     const status = document.getElementById('courseStatus').value;
@@ -918,7 +972,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     let courseId = editingCourseId;
     const payload = {
       title, slug, price_cents: Math.round(price*100), access_days: accessDays,
-      short_description: shortDesc, description: fullDesc,
+      short_description: shortDesc, description: fullDesc, thumbnail_url: thumbnail,
       intro_video_url: introVideo, outro_video_url: outroVideo, status,
       created_by: currentUser.id
     };
