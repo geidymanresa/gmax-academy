@@ -838,123 +838,137 @@ document.getElementById('saveQuizBtn').addEventListener('click', ()=>{
 
 // ---- Save course ----
 document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
-  const title = document.getElementById('courseTitle').value.trim();
-  const price = parseFloat(document.getElementById('coursePrice').value || '0');
-  const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
-  const shortDesc = document.getElementById('courseShortDesc').value.trim();
-  const fullDesc = document.getElementById('courseFullDesc').value.trim();
-  const introVideo = document.getElementById('courseIntroVideo').value.trim();
-  const outroVideo = document.getElementById('courseOutroVideo').value.trim();
-  const status = document.getElementById('courseStatus').value;
+  const saveBtn = document.getElementById('saveCourseBtn');
+  if (saveBtn.disabled) return; // evita doble clic mientras ya está guardando
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Guardando...';
 
-  const msgEl = document.getElementById('courseMsg');
-  if (!title){ msgEl.textContent = 'El título es obligatorio.'; msgEl.className = 'msg-inline error show'; return; }
+  try {
+    const title = document.getElementById('courseTitle').value.trim();
+    const price = parseFloat(document.getElementById('coursePrice').value || '0');
+    const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
+    const shortDesc = document.getElementById('courseShortDesc').value.trim();
+    const fullDesc = document.getElementById('courseFullDesc').value.trim();
+    const introVideo = document.getElementById('courseIntroVideo').value.trim();
+    const outroVideo = document.getElementById('courseOutroVideo').value.trim();
+    const status = document.getElementById('courseStatus').value;
 
-  const slug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const msgEl = document.getElementById('courseMsg');
+    if (!title){ msgEl.textContent = 'El título es obligatorio.'; msgEl.className = 'msg-inline error show'; return; }
 
-  let courseId = editingCourseId;
-  const payload = {
-    title, slug, price_cents: Math.round(price*100), access_days: accessDays,
-    short_description: shortDesc, description: fullDesc,
-    intro_video_url: introVideo, outro_video_url: outroVideo, status,
-    created_by: currentUser.id
-  };
+    const slug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
-  if (courseId){
-    const { error } = await sb.from('courses').update(payload).eq('id', courseId);
-    if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
-    await sb.from('chapters').delete().eq('course_id', courseId);
-  } else {
-    const { data, error } = await sb.from('courses').insert(payload).select().single();
-    if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
-    courseId = data.id;
-  }
+    let courseId = editingCourseId;
+    const payload = {
+      title, slug, price_cents: Math.round(price*100), access_days: accessDays,
+      short_description: shortDesc, description: fullDesc,
+      intro_video_url: introVideo, outro_video_url: outroVideo, status,
+      created_by: currentUser.id
+    };
 
-  const chapterBlocks = document.querySelectorAll('#chaptersContainer .chapter-block');
-  let chPos = 0;
-  let hadError = false;
-  for (const block of chapterBlocks){
-    const chTitle = block.querySelector('.ch-title').value.trim();
-    if (!chTitle) continue;
-    const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
-    if (chErr){
-      msgEl.textContent = 'Error al guardar el capítulo "' + chTitle + '": ' + chErr.message;
-      msgEl.className='msg-inline error show';
-      hadError = true;
-      break;
+    if (courseId){
+      const { error } = await sb.from('courses').update(payload).eq('id', courseId);
+      if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
+      await sb.from('chapters').delete().eq('course_id', courseId);
+    } else {
+      const { data, error } = await sb.from('courses').insert(payload).select().single();
+      if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
+      courseId = data.id;
     }
-    chPos++;
-    let lessonPos = 0;
-    const lessonCards = block.querySelectorAll('.lesson-card');
-    for (const card of lessonCards){
-      const lTitle = card.querySelector('.lesson-title').value.trim();
-      const lType = card.querySelector('.lesson-type').value;
-      const lVideo = card.querySelector('.lesson-video').value.trim();
-      const lDesc = card.querySelector('.lesson-desc').value.trim();
-      const lRichtext = card.querySelector('.lesson-richtext') ? card.querySelector('.lesson-richtext').innerHTML.trim() : '';
-      if (!lTitle) continue;
-      const links = [...card.querySelectorAll('.link-row')].map(r => ({
-        label: r.querySelector('.link-label').value.trim(),
-        url: r.querySelector('.link-url').value.trim()
-      })).filter(l => l.label || l.url);
 
-      const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({
-        chapter_id: chData.id, title: lTitle,
-        video_url: (lType==='text'||lType==='quiz') ? null : lVideo,
-        text_content: lType==='text' ? lRichtext : null,
-        description: lDesc, resource_links: links,
-        position: lessonPos, content_type: lType
-      }).select().single();
-
-      if (lErr){
-        msgEl.textContent = 'Error al guardar la lección "' + lTitle + '": ' + lErr.message + ' — Tus datos NO se perdieron, siguen en el formulario. Corrige el error e intenta guardar de nuevo.';
+    const chapterBlocks = document.querySelectorAll('#chaptersContainer .chapter-block');
+    let chPos = 0;
+    let hadError = false;
+    for (const block of chapterBlocks){
+      const chTitle = block.querySelector('.ch-title').value.trim();
+      if (!chTitle) continue;
+      const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
+      if (chErr){
+        msgEl.textContent = 'Error al guardar el capítulo "' + chTitle + '": ' + chErr.message;
         msgEl.className='msg-inline error show';
         hadError = true;
         break;
       }
+      chPos++;
+      let lessonPos = 0;
+      const lessonCards = block.querySelectorAll('.lesson-card');
+      for (const card of lessonCards){
+        const lTitle = card.querySelector('.lesson-title').value.trim();
+        const lType = card.querySelector('.lesson-type').value;
+        const lVideo = card.querySelector('.lesson-video').value.trim();
+        const lDesc = card.querySelector('.lesson-desc').value.trim();
+        const lRichtext = card.querySelector('.lesson-richtext') ? card.querySelector('.lesson-richtext').innerHTML.trim() : '';
+        if (!lTitle) continue;
+        const links = [...card.querySelectorAll('.link-row')].map(r => ({
+          label: r.querySelector('.link-label').value.trim(),
+          url: r.querySelector('.link-url').value.trim()
+        })).filter(l => l.label || l.url);
 
-      // Si es cuestionario, guarda la pregunta y opciones
-      if (lType === 'quiz' && card.dataset.quizJson){
-        const quizData = JSON.parse(card.dataset.quizJson);
-        if (quizData.questions && quizData.questions.length){
-          const { data: quizRow, error: qErr } = await sb.from('quizzes').insert({
-            lesson_id: lessonRow.id, title: lTitle, passing_score: quizData.passing_score || 70
-          }).select().single();
-          if (qErr){
-            msgEl.textContent = 'Error al guardar el cuestionario de "' + lTitle + '": ' + qErr.message;
-            msgEl.className='msg-inline error show';
-            hadError = true;
-            break;
-          }
-          let qPos = 0;
-          for (const q of quizData.questions){
-            const { data: questionRow, error: questionErr } = await sb.from('quiz_questions').insert({
-              quiz_id: quizRow.id, question_text: q.question_text, position: qPos
+        const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({
+          chapter_id: chData.id, title: lTitle,
+          video_url: (lType==='text'||lType==='quiz') ? null : lVideo,
+          text_content: lType==='text' ? lRichtext : null,
+          description: lDesc, resource_links: links,
+          position: lessonPos, content_type: lType
+        }).select().single();
+
+        if (lErr){
+          msgEl.textContent = 'Error al guardar la lección "' + lTitle + '": ' + lErr.message + ' — Tus datos NO se perdieron, siguen en el formulario. Corrige el error e intenta guardar de nuevo.';
+          msgEl.className='msg-inline error show';
+          hadError = true;
+          break;
+        }
+
+        // Si es cuestionario, guarda la pregunta y opciones
+        if (lType === 'quiz' && card.dataset.quizJson){
+          const quizData = JSON.parse(card.dataset.quizJson);
+          if (quizData.questions && quizData.questions.length){
+            const { data: quizRow, error: qErr } = await sb.from('quizzes').insert({
+              lesson_id: lessonRow.id, title: lTitle, passing_score: quizData.passing_score || 70
             }).select().single();
-            if (questionErr){ hadError = true; break; }
-            qPos++;
-            const optionsPayload = q.options.map(o => ({ question_id: questionRow.id, option_text: o.option_text, is_correct: o.is_correct }));
-            const { error: optErr } = await sb.from('quiz_options').insert(optionsPayload);
-            if (optErr){ hadError = true; break; }
+            if (qErr){
+              msgEl.textContent = 'Error al guardar el cuestionario de "' + lTitle + '": ' + qErr.message;
+              msgEl.className='msg-inline error show';
+              hadError = true;
+              break;
+            }
+            let qPos = 0;
+            for (const q of quizData.questions){
+              const { data: questionRow, error: questionErr } = await sb.from('quiz_questions').insert({
+                quiz_id: quizRow.id, question_text: q.question_text, position: qPos
+              }).select().single();
+              if (questionErr){ hadError = true; break; }
+              qPos++;
+              const optionsPayload = q.options.map(o => ({ question_id: questionRow.id, option_text: o.option_text, is_correct: o.is_correct }));
+              const { error: optErr } = await sb.from('quiz_options').insert(optionsPayload);
+              if (optErr){ hadError = true; break; }
+            }
           }
         }
+        if (hadError) break;
+
+        lessonPos++;
       }
       if (hadError) break;
-
-      lessonPos++;
     }
-    if (hadError) break;
-  }
 
-  if (hadError){
-    toast('Hubo un error guardando el curso. Revisa el mensaje en el formulario.', true);
-    return;
-  }
+    if (hadError){
+      toast('Hubo un error guardando el curso. Revisa el mensaje en el formulario.', true);
+      return;
+    }
 
-  courseModal.classList.remove('open');
-  toast('Curso guardado ✓');
-  loadCourses();
-  loadDashboard();
+    courseModal.classList.remove('open');
+    toast('Curso guardado ✓');
+    loadCourses();
+    loadDashboard();
+  } catch (e){
+    document.getElementById('courseMsg').textContent = 'Error inesperado: ' + e.message;
+    document.getElementById('courseMsg').className = 'msg-inline error show';
+    toast('Hubo un error inesperado guardando el curso.', true);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar curso';
+  }
 });
 
 // ---------- CUPONES ----------

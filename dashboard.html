@@ -350,7 +350,7 @@ async function renderMain(item){
   const navButtonsHtml = `
     <div class="lesson-nav-buttons">
       <button class="nav-btn prev" ${isFirst?'disabled':''} onclick="selectItem(${activeItemIndex - 1})">← Clase anterior</button>
-      <button class="nav-btn next" ${isLast?'disabled':''} onclick="selectItem(${activeItemIndex + 1})">Siguiente clase →</button>
+      <button class="nav-btn next" ${isLast?'disabled':''} onclick="goToNext(${item.type==='lesson' ? `'${item.id}'` : 'null'}, ${activeItemIndex + 1})">Siguiente clase →</button>
     </div>`;
 
   if (contentType === 'quiz'){
@@ -438,6 +438,18 @@ async function toggleComplete(lessonId){
   document.querySelector(`[data-idx="${activeItemIndex}"]`).classList.add('active');
   renderMain(allLessons[activeItemIndex]);
 }
+
+window.goToNext = async function(currentLessonId, nextIdx){
+  // Al avanzar, marca la clase actual como completada automáticamente (si no lo estaba ya)
+  if (currentLessonId && !isPreviewMode && !progressMap[currentLessonId]){
+    await sb.from('lesson_progress').upsert({
+      user_id: currentUser.id, lesson_id: currentLessonId, completed: true, updated_at: new Date().toISOString()
+    });
+    progressMap[currentLessonId] = true;
+  }
+  renderSidebar();
+  selectItem(nextIdx);
+};
 
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 
