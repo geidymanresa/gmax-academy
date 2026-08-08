@@ -451,6 +451,7 @@ async function loadCourses(){
       <td><span class="badge badge-${c.status}">${statusLabel(c.status)}</span></td>
       <td>${count ?? 0}</td>
       <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="window.open('dashboard.html?preview='+'${c.id}','_blank')">Vista previa</button>
         <button class="btn btn-ghost btn-sm" onclick="editCourse('${c.id}')">Editar</button>
         <button class="btn btn-sm ${c.status==='published' ? 'btn-danger' : 'btn-gold'}" onclick="toggleCourseStatus('${c.id}','${c.status}')">${c.status==='published' ? 'Despublicar' : 'Publicar'}</button>
       </td>
@@ -622,11 +623,17 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
 
   const chapterBlocks = document.querySelectorAll('#chaptersContainer .chapter-block');
   let chPos = 0;
+  let hadError = false;
   for (const block of chapterBlocks){
     const chTitle = block.querySelector('.ch-title').value.trim();
     if (!chTitle) continue;
     const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
-    if (chErr) continue;
+    if (chErr){
+      msgEl.textContent = 'Error al guardar el capítulo "' + chTitle + '": ' + chErr.message;
+      msgEl.className='msg-inline error show';
+      hadError = true;
+      break;
+    }
     chPos++;
     let lessonPos = 0;
     const lessonCards = block.querySelectorAll('.lesson-card');
@@ -639,12 +646,24 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         label: r.querySelector('.link-label').value.trim(),
         url: r.querySelector('.link-url').value.trim()
       })).filter(l => l.label || l.url);
-      await sb.from('lessons').insert({
+      const { error: lErr } = await sb.from('lessons').insert({
         chapter_id: chData.id, title: lTitle, video_url: lVideo, description: lDesc,
         resource_links: links, position: lessonPos, content_type:'video'
       });
+      if (lErr){
+        msgEl.textContent = 'Error al guardar la lección "' + lTitle + '": ' + lErr.message + ' — Tus datos NO se perdieron, siguen en el formulario. Corrige el error e intenta guardar de nuevo.';
+        msgEl.className='msg-inline error show';
+        hadError = true;
+        break;
+      }
       lessonPos++;
     }
+    if (hadError) break;
+  }
+
+  if (hadError){
+    toast('Hubo un error guardando el curso. Revisa el mensaje en el formulario.', true);
+    return;
   }
 
   courseModal.classList.remove('open');
