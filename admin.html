@@ -653,13 +653,15 @@ function addLessonRowEl(list, l){
 
   const linksHtml = (l.resource_links && l.resource_links.length ? l.resource_links : [{label:'',url:'',rtype:'link'}]).map(lk => `
     <div class="link-row">
-      <select class="link-type">
+      <select class="link-type" onchange="onLinkTypeChange(this)">
         <option value="link" ${(!lk.rtype||lk.rtype==='link')?'selected':''}>🔗 Link</option>
         <option value="document" ${lk.rtype==='document'?'selected':''}>📄 Documento</option>
         <option value="image" ${lk.rtype==='image'?'selected':''}>🖼️ Imagen</option>
       </select>
       <input type="text" class="link-label" placeholder="Ej. Guía en PDF" value="${escapeHtml(lk.label||'')}">
-      <input type="text" class="link-url" placeholder="https://..." value="${escapeHtml(lk.url||'')}">
+      <input type="text" class="link-url" placeholder="https://... o dale a Subir archivo" value="${escapeHtml(lk.url||'')}">
+      <button type="button" class="upload-file-btn" style="${(!lk.rtype||lk.rtype==='link')?'display:none;':''}" onclick="triggerFileUpload(this)" title="Subir archivo desde tu computadora">📤 Subir</button>
+      <input type="file" class="hidden-file-input" style="display:none;" onchange="uploadResourceFile(this)">
       <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
     </div>
   `).join('');
@@ -750,18 +752,62 @@ window.execRTLink = function(btn){
   document.execCommand('createLink', false, url);
 };
 
+window.onLinkTypeChange = function(select){
+  const row = select.closest('.link-row');
+  const uploadBtn = row.querySelector('.upload-file-btn');
+  uploadBtn.style.display = select.value === 'link' ? 'none' : 'inline-flex';
+};
+
+window.triggerFileUpload = function(btn){
+  const row = btn.closest('.link-row');
+  row.querySelector('.hidden-file-input').click();
+};
+
+window.uploadResourceFile = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const row = fileInput.closest('.link-row');
+  const urlInput = row.querySelector('.link-url');
+  const labelInput = row.querySelector('.link-label');
+  const uploadBtn = row.querySelector('.upload-file-btn');
+
+  uploadBtn.textContent = '⏳ Subiendo...';
+  uploadBtn.disabled = true;
+
+  const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `lessons/${Date.now()}-${cleanName}`;
+
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){
+    toast('Error subiendo el archivo: ' + error.message, true);
+    uploadBtn.textContent = '📤 Subir';
+    uploadBtn.disabled = false;
+    return;
+  }
+
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  urlInput.value = pub.publicUrl;
+  if (!labelInput.value.trim()) labelInput.value = file.name;
+
+  uploadBtn.textContent = '✓ Subido';
+  uploadBtn.disabled = false;
+  toast('Archivo subido ✓');
+};
+
 window.addLinkRow = function(btn){
   const list = btn.previousElementSibling;
   const row = document.createElement('div');
   row.className = 'link-row';
   row.innerHTML = `
-    <select class="link-type">
+    <select class="link-type" onchange="onLinkTypeChange(this)">
       <option value="link">🔗 Link</option>
       <option value="document">📄 Documento</option>
       <option value="image">🖼️ Imagen</option>
     </select>
     <input type="text" class="link-label" placeholder="Ej. Guía en PDF">
-    <input type="text" class="link-url" placeholder="https://...">
+    <input type="text" class="link-url" placeholder="https://... o dale a Subir archivo">
+    <button type="button" class="upload-file-btn" style="display:none;" onclick="triggerFileUpload(this)" title="Subir archivo desde tu computadora">📤 Subir</button>
+    <input type="file" class="hidden-file-input" style="display:none;" onchange="uploadResourceFile(this)">
     <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
   `;
   list.appendChild(row);
