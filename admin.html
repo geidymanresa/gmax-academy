@@ -298,9 +298,14 @@
       <button type="button" class="add-link" id="addChapterBtn">+ Agregar capítulo</button>
     </div>
 
-    <div class="modal-foot">
-      <button class="btn btn-ghost" id="cancelCourseBtn">Cancelar</button>
-      <button class="btn btn-primary" id="saveCourseBtn">Guardar curso</button>
+    <div class="modal-foot" style="flex-direction:column;align-items:stretch;gap:10px;">
+      <div style="background:#FBF0D9;color:#8A6300;font-size:12.5px;padding:10px 14px;border-radius:8px;text-align:center;">
+        ⚠️ Minimizar una clase NO la guarda todavía. Solo se guarda todo de verdad cuando le des a "Guardar curso" aquí abajo.
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-ghost" id="cancelCourseBtn">Cancelar</button>
+        <button class="btn btn-primary" id="saveCourseBtn">Guardar curso</button>
+      </div>
     </div>
   </div>
 </div>
@@ -693,6 +698,10 @@ function addLessonRowEl(list, l){
       <div class="lesson-links-label">Links recomendados para esta clase</div>
       <div class="links-list">${linksHtml}</div>
       <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;">
+        <button type="button" class="btn btn-gold btn-sm" onclick="this.closest('.lesson-card').classList.remove('lesson-open')">✓ Listo, minimizar esta clase</button>
+      </div>
     </div>
   `;
   list.appendChild(card);
