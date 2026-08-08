@@ -120,6 +120,7 @@
   .link-row input{font-size:12px;padding:7px 9px;}
   .link-row input.link-label{flex:1;}
   .link-row input.link-url{flex:2;}
+  .link-row select.link-type{font-size:11.5px;padding:7px 6px;border:1.5px solid var(--line);border-radius:6px;flex:none;width:110px;}
   .lesson-links-label{font-size:11px;color:var(--slate);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 4px;}
   .icon-btn{background:none;border:none;color:var(--error);font-size:16px;padding:4px 8px;border-radius:6px;}
   .icon-btn:hover{background:#FCE9E9;}
@@ -650,9 +651,14 @@ function addLessonRowEl(list, l){
   card.dataset.lessonId = l.id || '';
   card.dataset.quizJson = l.quiz ? JSON.stringify(l.quiz) : '';
 
-  const linksHtml = (l.resource_links && l.resource_links.length ? l.resource_links : [{label:'',url:''}]).map(lk => `
+  const linksHtml = (l.resource_links && l.resource_links.length ? l.resource_links : [{label:'',url:'',rtype:'link'}]).map(lk => `
     <div class="link-row">
-      <input type="text" class="link-label" placeholder="Ej. Sitio del TDI" value="${escapeHtml(lk.label||'')}">
+      <select class="link-type">
+        <option value="link" ${(!lk.rtype||lk.rtype==='link')?'selected':''}>🔗 Link</option>
+        <option value="document" ${lk.rtype==='document'?'selected':''}>📄 Documento</option>
+        <option value="image" ${lk.rtype==='image'?'selected':''}>🖼️ Imagen</option>
+      </select>
+      <input type="text" class="link-label" placeholder="Ej. Guía en PDF" value="${escapeHtml(lk.label||'')}">
       <input type="text" class="link-url" placeholder="https://..." value="${escapeHtml(lk.url||'')}">
       <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
     </div>
@@ -695,9 +701,9 @@ function addLessonRowEl(list, l){
       <select class="lesson-type" onchange="onLessonTypeChange(this)" style="margin-bottom:10px;">${typeOptions}</select>
 
       <textarea class="lesson-desc" placeholder="Descripción corta de la lección (opcional, se muestra siempre)">${escapeHtml(l.description||'')}</textarea>
-      <div class="lesson-links-label">Links recomendados para esta clase</div>
+      <div class="lesson-links-label">Recursos asociados a esta clase (links, documentos o imágenes)</div>
       <div class="links-list">${linksHtml}</div>
-      <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
+      <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar recurso</button>
 
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;">
         <button type="button" class="btn btn-gold btn-sm" onclick="this.closest('.lesson-card').classList.remove('lesson-open')">✓ Listo, minimizar esta clase</button>
@@ -749,7 +755,12 @@ window.addLinkRow = function(btn){
   const row = document.createElement('div');
   row.className = 'link-row';
   row.innerHTML = `
-    <input type="text" class="link-label" placeholder="Ej. Sitio del TDI">
+    <select class="link-type">
+      <option value="link">🔗 Link</option>
+      <option value="document">📄 Documento</option>
+      <option value="image">🖼️ Imagen</option>
+    </select>
+    <input type="text" class="link-label" placeholder="Ej. Guía en PDF">
     <input type="text" class="link-url" placeholder="https://...">
     <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
   `;
@@ -901,7 +912,8 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         if (!lTitle) continue;
         const links = [...card.querySelectorAll('.link-row')].map(r => ({
           label: r.querySelector('.link-label').value.trim(),
-          url: r.querySelector('.link-url').value.trim()
+          url: r.querySelector('.link-url').value.trim(),
+          rtype: r.querySelector('.link-type').value
         })).filter(l => l.label || l.url);
 
         const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({

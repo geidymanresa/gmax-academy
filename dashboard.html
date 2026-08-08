@@ -103,6 +103,7 @@
 <div id="app">
   <aside class="sidebar">
     <div class="sidebar-head">
+      <a href="mis-cursos.html" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--slate);margin-bottom:12px;">← Mis cursos</a>
       <div class="logo">GMAX Insurance Academy</div>
       <div class="course-name" id="courseName">—</div>
     </div>
@@ -186,13 +187,20 @@ async function init(){
 }
 
 async function loadEnrollments(){
-  const { data: enrollments } = await sb
+  const params = new URLSearchParams(window.location.search);
+  const requestedCourseId = params.get('course');
+
+  let query = sb
     .from('enrollments')
     .select('*, courses(*)')
     .eq('user_id', currentUser.id)
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
     .order('starts_at', {ascending:false});
+
+  if (requestedCourseId) query = query.eq('course_id', requestedCourseId);
+
+  const { data: enrollments } = await query;
 
   if (!enrollments || enrollments.length === 0){
     showGateMessage('Todavía no tienes ningún curso activo, o tu acceso venció. <br><br><a href="index.html#catalogo" style="color:var(--gold);font-weight:700;">Ver catálogo de cursos →</a>', false);
@@ -263,7 +271,7 @@ function renderSidebar(){
         chapterNum++;
         lastChapter = item.chapterTitle;
         html += `
-          <div class="side-chapter" id="sidechapter-${chapterNum}">
+          <div class="side-chapter collapsed" id="sidechapter-${chapterNum}">
             <div class="side-chapter-head" onclick="toggleSideChapter(${chapterNum})">
               <span class="side-chapter-num">Cap. ${chapterNum}</span>
               <span class="side-chapter-title">${item.chapterTitle}</span>
@@ -302,7 +310,11 @@ window.selectItem = function(idx){
   activeItemIndex = idx;
   document.querySelectorAll('.lesson-item, .nav-item-special').forEach(el => el.classList.remove('active'));
   const el = document.querySelector(`[data-idx="${idx}"]`);
-  if (el) el.classList.add('active');
+  if (el){
+    el.classList.add('active');
+    const parentChapter = el.closest('.side-chapter');
+    if (parentChapter) parentChapter.classList.remove('collapsed');
+  }
   renderMain(allLessons[idx]);
 
   // Guarda automáticamente hasta dónde llegó (no aplica en modo vista previa)
@@ -311,6 +323,10 @@ window.selectItem = function(idx){
     sb.from('enrollments').update({ last_lesson_id: item.id }).eq('id', currentEnrollmentId);
   }
 };
+
+function resourceIcon(rtype){
+  return { document:'📄', image:'🖼️', link:'🔗' }[rtype] || '🔗';
+}
 
 function videoEmbed(url){
   if (!url) return '<div class="video-placeholder">Todavía no se ha subido el video de esta lección.</div>';
@@ -324,7 +340,7 @@ async function renderMain(item){
   const contentType = item.content_type || 'video';
 
   const linksHtml = (item.resource_links && item.resource_links.length)
-    ? `<div class="links-card"><h3>Links recomendados para esta clase</h3>${item.resource_links.map(l => `<a href="${l.url}" target="_blank">🔗 ${l.label || l.url}</a>`).join('')}</div>`
+    ? `<div class="links-card"><h3>Recursos de esta clase</h3>${item.resource_links.map(l => `<a href="${l.url}" target="_blank">${resourceIcon(l.rtype)} ${l.label || l.url}</a>`).join('')}</div>`
     : '';
 
   const completeBadgeHtml = (isRealLesson && contentType !== 'quiz' && done)
