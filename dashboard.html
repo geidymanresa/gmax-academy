@@ -135,6 +135,26 @@ async function init(){
   if (!session){ window.location.href = 'login.html'; return; }
   currentUser = session.user;
 
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
+  const isAdmin = profile && (profile.role === 'admin' || profile.role === 'super_admin');
+
+  const params = new URLSearchParams(window.location.search);
+  const previewCourseId = params.get('preview');
+
+  if (previewCourseId && isAdmin){
+    const { data: course } = await sb.from('courses').select('*').eq('id', previewCourseId).single();
+    if (!course){
+      showGateMessage('No se encontró ese curso.', false);
+      return;
+    }
+    currentCourse = course;
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.add('ready');
+    document.getElementById('courseName').textContent = currentCourse.title + ' (Vista previa)';
+    await loadCourseContent();
+    return;
+  }
+
   // Verifica que este sea el dispositivo activo (control de 1 sesión a la vez)
   const localToken = localStorage.getItem('gmax_session_token');
   const { data: sessionRow } = await sb.from('active_sessions').select('session_token').eq('user_id', currentUser.id).single();
