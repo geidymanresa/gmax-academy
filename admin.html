@@ -89,14 +89,23 @@
   .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
 
   .chapter-block{border:1.5px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--bg);}
+  .chapter-block.ch-collapsed .lessons-list, .chapter-block.ch-collapsed .ch-add-lesson{display:none;}
+  .ch-toggle{background:none;border:none;color:var(--slate);font-size:14px;padding:2px 6px;cursor:pointer;}
+  .lesson-summary-row{display:flex;align-items:center;gap:8px;}
+  .lesson-summary-row .lesson-title{flex:1;font-weight:600;font-size:13px;padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;}
+  .lesson-type-icon{font-size:15px;flex:none;}
+  .lesson-edit-toggle{background:var(--bg);border:1.5px solid var(--line);color:var(--navy);font-size:11.5px;font-weight:700;padding:7px 11px;border-radius:7px;white-space:nowrap;}
+  .lesson-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .lesson-card.lesson-open .lesson-detail{display:block;}
   .chapter-block .ch-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}
   .chapter-block input.ch-title{flex:1;font-weight:700;font-family:'Sora',sans-serif;}
   .lesson-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
   .lesson-row input{flex:1;}
   .lesson-row input.lesson-title{flex:2;}
   .lesson-card{border:1.5px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff;}
-  .lesson-card .lesson-top{display:flex;gap:8px;margin-bottom:8px;}
-  .lesson-card .lesson-title{flex:2;font-weight:600;}
+  .lesson-card .lesson-top{margin-bottom:8px;}
+  .lesson-card .lesson-title{width:100%;font-weight:700;font-size:14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;margin-bottom:8px;font-family:'Sora',sans-serif;}
+  .lesson-controls-row{display:flex;gap:8px;align-items:center;}
   .lesson-card .lesson-video{flex:2;}
   .lesson-type{flex:none;width:130px;font-size:12.5px;padding:8px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;}
   .lesson-card textarea.lesson-desc{width:100%;font-size:12.5px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;min-height:44px;margin-bottom:8px;font-family:'Inter',sans-serif;}
@@ -577,11 +586,14 @@ function addChapterBlock(title, lessons){
   div.id = chId;
   div.innerHTML = `
     <div class="ch-head">
+      <button type="button" class="ch-toggle" onclick="this.closest('.chapter-block').classList.toggle('ch-collapsed')" title="Colapsar/expandir">▾</button>
       <input type="text" class="ch-title" placeholder="Nombre del capítulo" value="${escapeHtml(title)}">
+      <button type="button" class="icon-btn" style="color:var(--slate);" onclick="moveChapter('${chId}',-1)" title="Subir capítulo">↑</button>
+      <button type="button" class="icon-btn" style="color:var(--slate);" onclick="moveChapter('${chId}',1)" title="Bajar capítulo">↓</button>
       <button type="button" class="icon-btn" onclick="document.getElementById('${chId}').remove()">✕</button>
     </div>
     <div class="lessons-list"></div>
-    <button type="button" class="add-link" onclick="addLessonRow('${chId}')">+ Agregar lección</button>
+    <button type="button" class="add-link ch-add-lesson" onclick="addLessonRow('${chId}')">+ Agregar lección</button>
   `;
   document.getElementById('chaptersContainer').appendChild(div);
   const list = div.querySelector('.lessons-list');
@@ -595,6 +607,27 @@ function addChapterBlock(title, lessons){
 window.addLessonRow = function(chId){
   const list = document.querySelector('#' + chId + ' .lessons-list');
   addLessonRowEl(list, {});
+};
+
+// ---- Reordenar capítulos y lecciones (subir/bajar) ----
+window.moveChapter = function(chId, dir){
+  const el = document.getElementById(chId);
+  const container = document.getElementById('chaptersContainer');
+  if (dir === -1 && el.previousElementSibling){
+    container.insertBefore(el, el.previousElementSibling);
+  } else if (dir === 1 && el.nextElementSibling){
+    container.insertBefore(el.nextElementSibling, el);
+  }
+};
+
+window.moveLesson = function(btn, dir){
+  const card = btn.closest('.lesson-card');
+  const list = card.parentElement;
+  if (dir === -1 && card.previousElementSibling){
+    list.insertBefore(card, card.previousElementSibling);
+  } else if (dir === 1 && card.nextElementSibling){
+    list.insertBefore(card.nextElementSibling, card);
+  }
 };
 
 const TYPE_LABELS = {
@@ -625,34 +658,43 @@ function addLessonRowEl(list, l){
   ).join('');
 
   card.innerHTML = `
-    <div class="lesson-top">
-      <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(l.title||'')}">
-      <select class="lesson-type" onchange="onLessonTypeChange(this)">${typeOptions}</select>
+  card.innerHTML = `
+    <div class="lesson-summary-row">
+      <span class="lesson-type-icon">${TYPE_LABELS[type].icon}</span>
+      <input type="text" class="lesson-title" placeholder="Título de la clase (ej. Requisitos para Licenciarte)" value="${escapeHtml(l.title||'')}">
+      <button type="button" class="icon-btn" style="color:var(--slate);" onclick="moveLesson(this,-1)" title="Subir lección">↑</button>
+      <button type="button" class="icon-btn" style="color:var(--slate);" onclick="moveLesson(this,1)" title="Bajar lección">↓</button>
+      <button type="button" class="lesson-edit-toggle" onclick="this.closest('.lesson-card').classList.toggle('lesson-open')">Editar ▾</button>
       <button type="button" class="icon-btn" onclick="this.closest('.lesson-card').remove()">✕</button>
     </div>
 
-    <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
-      value="${escapeHtml(l.video_url||'')}"
-      style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'?'display:none;':''}">
+    <div class="lesson-detail">
+      <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
+        value="${escapeHtml(l.video_url||'')}"
+        style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'?'display:none;':''}">
 
-    <div class="richtext-wrap" style="${type==='text'?'':'display:none;'}">
-      <div class="rt-toolbar">
-        <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
-        <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
-        <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+      <div class="richtext-wrap" style="${type==='text'?'':'display:none;'}">
+        <div class="rt-toolbar">
+          <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
+          <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
+          <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+        </div>
+        <div class="lesson-richtext" contenteditable="true">${l.text_content || ''}</div>
       </div>
-      <div class="lesson-richtext" contenteditable="true">${l.text_content || ''}</div>
-    </div>
 
-    <div class="quiz-builder-field" style="${type==='quiz'?'':'display:none;'}">
-      <button type="button" class="btn btn-ghost btn-sm" onclick="openQuizBuilder(this)">Editar preguntas del cuestionario</button>
-      <span class="quiz-summary">${quizSummaryText(l.quiz)}</span>
-    </div>
+      <div class="quiz-builder-field" style="${type==='quiz'?'':'display:none;'}">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openQuizBuilder(this)">Editar preguntas del cuestionario</button>
+        <span class="quiz-summary">${quizSummaryText(l.quiz)}</span>
+      </div>
 
-    <textarea class="lesson-desc" placeholder="Descripción corta de la lección (opcional, se muestra siempre)">${escapeHtml(l.description||'')}</textarea>
-    <div class="lesson-links-label">Links recomendados para esta clase</div>
-    <div class="links-list">${linksHtml}</div>
-    <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
+      <label style="font-family:'Sora',sans-serif;font-size:11.5px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;">Tipo de clase</label>
+      <select class="lesson-type" onchange="onLessonTypeChange(this)" style="margin-bottom:10px;">${typeOptions}</select>
+
+      <textarea class="lesson-desc" placeholder="Descripción corta de la lección (opcional, se muestra siempre)">${escapeHtml(l.description||'')}</textarea>
+      <div class="lesson-links-label">Links recomendados para esta clase</div>
+      <div class="links-list">${linksHtml}</div>
+      <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
+    </div>
   `;
   list.appendChild(card);
 }
@@ -672,7 +714,9 @@ window.onLessonTypeChange = function(select){
   const videoInput = card.querySelector('.lesson-video');
   const richtextWrap = card.querySelector('.richtext-wrap');
   const quizField = card.querySelector('.quiz-builder-field');
+  const icon = card.querySelector('.lesson-type-icon');
 
+  icon.textContent = TYPE_LABELS[type].icon;
   videoInput.style.display = (type==='text'||type==='quiz') ? 'none' : 'block';
   videoInput.placeholder = TYPE_LABELS[type].placeholder;
   richtextWrap.style.display = type==='text' ? 'block' : 'none';
