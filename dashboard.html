@@ -200,7 +200,7 @@ async function loadCourseContent(){
   }
   (chapters||[]).sort((a,b)=>a.position-b.position).forEach(ch => {
     (ch.lessons||[]).sort((a,b)=>a.position-b.position).forEach(l => {
-      allLessons.push({ id:l.id, title:l.title, video_url:l.video_url, description:l.description, resource_links:l.resource_links||[], type:'lesson', chapterTitle: ch.title });
+      allLessons.push({ id:l.id, title:l.title, video_url:l.video_url, description:l.description, text_content:l.text_content, content_type:l.content_type||'video', resource_links:l.resource_links||[], type:'lesson', chapterTitle: ch.title });
     });
   });
   if (currentCourse.outro_video_url){
@@ -263,28 +263,105 @@ function videoEmbed(url){
   return `<iframe src="${url}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
 }
 
-function renderMain(item){
+async function renderMain(item){
   const main = document.getElementById('mainArea');
   const isRealLesson = item.type === 'lesson';
   const done = isRealLesson && progressMap[item.id];
+  const contentType = item.content_type || 'video';
 
   const linksHtml = (item.resource_links && item.resource_links.length)
     ? `<div class="links-card"><h3>Links recomendados para esta clase</h3>${item.resource_links.map(l => `<a href="${l.url}" target="_blank">🔗 ${l.label || l.url}</a>`).join('')}</div>`
     : '';
 
+  const completeBtnHtml = (isRealLesson && contentType !== 'quiz')
+    ? `<button class="complete-btn ${done?'done':''}" id="completeBtn">${done ? '✓ Completada' : 'Marcar como completada'}</button>`
+    : '';
+
+  let mediaHtml = '';
+  if (contentType === 'video' || item.type === 'intro' || item.type === 'outro'){
+    mediaHtml = `<div class="video-wrap">${videoEmbed(item.video_url)}</div>`;
+  } else if (contentType === 'image'){
+    mediaHtml = item.video_url
+      ? `<div style="border-radius:16px;overflow:hidden;margin-bottom:26px;"><img src="${item.video_url}" style="width:100%;display:block;"></div>`
+      : `<div class="video-wrap"><div class="video-placeholder">Todavía no se ha subido la imagen de esta lección.</div></div>`;
+  } else if (contentType === 'document'){
+    mediaHtml = item.video_url
+      ? `<div class="video-wrap"><iframe src="${item.video_url}" loading="lazy"></iframe></div><div style="margin:-12px 0 20px;"><a href="${item.video_url}" target="_blank" class="complete-btn" style="display:inline-block;text-decoration:none;">Abrir documento en una pestaña nueva ↗</a></div>`
+      : `<div class="video-wrap"><div class="video-placeholder">Todavía no se ha subido el documento de esta lección.</div></div>`;
+  }
+  // Para 'text' no hay media arriba, el texto enriquecido se muestra como cuerpo principal.
+
+  if (contentType === 'quiz'){
+    main.innerHTML = `
+      <div class="lesson-head"><h1>${item.title}</h1></div>
+      <p class="lesson-desc">${item.description || ''}</p>
+      <div id="quizArea"><div class="empty-course">Cargando cuestionario...</div></div>
+    `;
+    renderQuiz(item.id);
+    return;
+  }
+
   main.innerHTML = `
-    <div class="video-wrap">${videoEmbed(item.video_url)}</div>
+    ${mediaHtml}
     <div class="lesson-head">
       <h1>${item.title}</h1>
-      ${isRealLesson ? `<button class="complete-btn ${done?'done':''}" id="completeBtn">${done ? '✓ Completada' : 'Marcar como completada'}</button>` : ''}
+      ${completeBtnHtml}
     </div>
-    <p class="lesson-desc">${item.description || 'Sin descripción todavía.'}</p>
+    ${contentType === 'text' ? `<div class="lesson-desc" style="font-size:15px;">${item.text_content || 'Contenido no disponible todavía.'}</div>` : ''}
+    <p class="lesson-desc">${item.description || (contentType==='text' ? '' : 'Sin descripción todavía.')}</p>
     ${linksHtml}
   `;
 
-  if (isRealLesson){
+  if (isRealLesson && contentType !== 'quiz'){
     document.getElementById('completeBtn').addEventListener('click', () => toggleComplete(item.id));
   }
+}
+
+async function renderQuiz(lessonId){
+  const { data: quiz } = await sb.from('quizzes').select('*, quiz_questions(*, quiz_options(*))').eq('lesson_id', lessonId).single();
+  const quizArea = document.getElementById('quizArea');
+  if (!quiz || !quiz.quiz_questions || !quiz.quiz_questions.length){
+    quizArea.innerHTML = '<div class="empty-course">Este cuestionario todavía no tiene preguntas.</div>';
+    return;
+  }
+  const questions = quiz.quiz_questions.sort((a,b)=>a.position-b.position);
+
+  quizArea.innerHTML = questions.map((q, qi) => {
+    const multi = q.quiz_options.filter(o=>o.is_correct).length > 1;
+    const optionsHtml = q.quiz_options.map((o, oi) => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--line);border-radius:9px;margin-bottom:8px;cursor:pointer;">
+        <input type="${multi?'checkbox':'radio'}" name="q${qi}" value="${o.id}">
+        <span>${o.option_text}</span>
+      </label>
+    `).join('');
+    return `
+      <div class="links-card" style="margin-bottom:16px;">
+        <h3>${qi+1}. ${q.question_text}</h3>
+        <div style="margin-top:10px;">${optionsHtml}</div>
+      </div>`;
+  }).join('') + `<button class="complete-btn" id="submitQuizBtn">Calificar cuestionario</button><div id="quizResult" style="margin-top:16px;"></div>`;
+
+  document.getElementById('submitQuizBtn').addEventListener('click', async () => {
+    let correctCount = 0;
+    questions.forEach((q, qi) => {
+      const checked = [...document.querySelectorAll(`input[name="q${qi}"]:checked`)].map(i=>i.value);
+      const correctIds = q.quiz_options.filter(o=>o.is_correct).map(o=>o.id);
+      const isCorrect = checked.length === correctIds.length && checked.every(id => correctIds.includes(id));
+      if (isCorrect) correctCount++;
+    });
+    const pct = Math.round((correctCount / questions.length) * 100);
+    const passed = pct >= (quiz.passing_score || 70);
+
+    await sb.from('quiz_attempts').insert({ user_id: currentUser.id, quiz_id: quiz.id, score: pct, passed });
+
+    document.getElementById('quizResult').innerHTML = `
+      <div class="links-card" style="text-align:center;background:${passed?'#E8F3EA':'#FCE9E9'};">
+        <h3 style="color:${passed?'var(--success)':'#D64545'};font-size:18px;">
+          ${passed ? '✓ ¡Aprobaste!' : '✗ No aprobaste todavía'}
+        </h3>
+        <p style="margin-top:6px;color:var(--slate);">Sacaste ${pct}% — necesitas ${quiz.passing_score || 70}% para aprobar.</p>
+      </div>`;
+  });
 }
 
 async function toggleComplete(lessonId){

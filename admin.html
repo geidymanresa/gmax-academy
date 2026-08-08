@@ -98,7 +98,15 @@
   .lesson-card .lesson-top{display:flex;gap:8px;margin-bottom:8px;}
   .lesson-card .lesson-title{flex:2;font-weight:600;}
   .lesson-card .lesson-video{flex:2;}
+  .lesson-type{flex:none;width:130px;font-size:12.5px;padding:8px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;}
   .lesson-card textarea.lesson-desc{width:100%;font-size:12.5px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;min-height:44px;margin-bottom:8px;font-family:'Inter',sans-serif;}
+  .rt-toolbar{display:flex;gap:4px;margin-bottom:4px;}
+  .rt-toolbar button{border:1.5px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 9px;font-size:12px;font-weight:700;}
+  .rt-toolbar button:hover{background:#EAF0FB;}
+  .lesson-richtext{width:100%;min-height:70px;font-size:12.5px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;margin-bottom:8px;font-family:'Inter',sans-serif;}
+  .lesson-richtext a{color:var(--blue);text-decoration:underline;}
+  .quiz-builder-field{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;background:var(--bg);border-radius:8px;}
+  .quiz-summary{font-size:12px;color:var(--slate);font-weight:600;}
   .link-row{display:flex;gap:6px;margin-bottom:6px;}
   .link-row input{font-size:12px;padding:7px 9px;}
   .link-row input.link-label{flex:1;}
@@ -111,6 +119,15 @@
   .toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:14px 20px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:300;display:none;}
   .toast.show{display:block;}
   .toast.error{background:var(--error);}
+
+  .question-block{border:1.5px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--bg);}
+  .question-block .q-head{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;}
+  .question-block .q-text{flex:1;font-weight:600;font-family:'Sora',sans-serif;}
+  .option-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 10px;}
+  .option-row input.opt-text{flex:1;border:none;font-size:13px;}
+  .option-row input.opt-text:focus{outline:none;}
+  .option-correct-label{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--success);font-weight:700;white-space:nowrap;}
+  .multi-toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--navy);font-weight:600;margin-bottom:12px;}
 
   .msg-inline{font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:14px;display:none;}
   .msg-inline.show{display:block;}
@@ -275,6 +292,23 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" id="cancelCourseBtn">Cancelar</button>
       <button class="btn btn-primary" id="saveCourseBtn">Guardar curso</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONSTRUCTOR DE CUESTIONARIO -->
+<div class="modal-overlay" id="quizModal">
+  <div class="modal" style="max-width:640px;">
+    <h2>Cuestionario / Examen</h2>
+    <div class="form-row">
+      <label>Puntaje mínimo para aprobar (%)</label>
+      <input type="number" id="quizPassingScore" value="70" style="width:120px;">
+    </div>
+    <div id="questionsContainer"></div>
+    <button type="button" class="add-link" id="addQuestionBtn">+ Agregar pregunta</button>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelQuizBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveQuizBtn">Guardar cuestionario</button>
     </div>
   </div>
 </div>
@@ -508,9 +542,25 @@ window.editCourse = async function(id){
   chapterCount = 0;
 
   const { data: chapters } = await sb.from('chapters').select('*, lessons(*)').eq('course_id', id).order('position');
-  (chapters || []).forEach(ch => {
-    addChapterBlock(ch.title, (ch.lessons || []).sort((a,b)=>a.position-b.position));
-  });
+  for (const ch of (chapters || [])){
+    const sortedLessons = (ch.lessons || []).sort((a,b)=>a.position-b.position);
+    for (const l of sortedLessons){
+      if (l.content_type === 'quiz'){
+        const { data: quizRow } = await sb.from('quizzes').select('*, quiz_questions(*, quiz_options(*))').eq('lesson_id', l.id).single();
+        if (quizRow){
+          l.quiz = {
+            passing_score: quizRow.passing_score,
+            questions: (quizRow.quiz_questions || []).map(q => ({
+              question_text: q.question_text,
+              multi_select: (q.quiz_options || []).filter(o=>o.is_correct).length > 1,
+              options: (q.quiz_options || []).map(o => ({ option_text: o.option_text, is_correct: o.is_correct }))
+            }))
+          };
+        }
+      }
+    }
+    addChapterBlock(ch.title, sortedLessons);
+  }
 
   document.getElementById('courseMsg').className = 'msg-inline';
   courseModal.classList.add('open');
@@ -536,40 +586,111 @@ function addChapterBlock(title, lessons){
   document.getElementById('chaptersContainer').appendChild(div);
   const list = div.querySelector('.lessons-list');
   if (lessons && lessons.length){
-    lessons.forEach(l => addLessonRowEl(list, l.title, l.video_url, l.description, l.resource_links));
+    lessons.forEach(l => addLessonRowEl(list, l));
   } else {
-    addLessonRowEl(list, '', '', '', []);
+    addLessonRowEl(list, {});
   }
 }
 
 window.addLessonRow = function(chId){
   const list = document.querySelector('#' + chId + ' .lessons-list');
-  addLessonRowEl(list, '', '', '', []);
+  addLessonRowEl(list, {});
 };
 
-function addLessonRowEl(list, title, videoUrl, description, links){
+const TYPE_LABELS = {
+  video: { icon:'🎥', placeholder:'Link del video (Bunny.net)' },
+  image: { icon:'🖼️', placeholder:'Link de la imagen' },
+  document: { icon:'📄', placeholder:'Link del documento (PDF, etc.)' },
+  text: { icon:'📝', placeholder:'' },
+  quiz: { icon:'❓', placeholder:'' }
+};
+
+function addLessonRowEl(list, l){
   const card = document.createElement('div');
   card.className = 'lesson-card';
-  const linksHtml = (links && links.length ? links : [{label:'',url:''}]).map(l => `
+  const type = l.content_type || 'video';
+  card.dataset.lessonId = l.id || '';
+  card.dataset.quizJson = l.quiz ? JSON.stringify(l.quiz) : '';
+
+  const linksHtml = (l.resource_links && l.resource_links.length ? l.resource_links : [{label:'',url:''}]).map(lk => `
     <div class="link-row">
-      <input type="text" class="link-label" placeholder="Ej. Sitio del TDI" value="${escapeHtml(l.label||'')}">
-      <input type="text" class="link-url" placeholder="https://..." value="${escapeHtml(l.url||'')}">
+      <input type="text" class="link-label" placeholder="Ej. Sitio del TDI" value="${escapeHtml(lk.label||'')}">
+      <input type="text" class="link-url" placeholder="https://..." value="${escapeHtml(lk.url||'')}">
       <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
     </div>
   `).join('');
+
+  const typeOptions = Object.keys(TYPE_LABELS).map(t =>
+    `<option value="${t}" ${t===type?'selected':''}>${TYPE_LABELS[t].icon} ${labelForType(t)}</option>`
+  ).join('');
+
   card.innerHTML = `
     <div class="lesson-top">
-      <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(title||'')}">
-      <input type="text" class="lesson-video" placeholder="Link del video (Bunny.net)" value="${escapeHtml(videoUrl||'')}">
+      <input type="text" class="lesson-title" placeholder="Nombre de la lección" value="${escapeHtml(l.title||'')}">
+      <select class="lesson-type" onchange="onLessonTypeChange(this)">${typeOptions}</select>
       <button type="button" class="icon-btn" onclick="this.closest('.lesson-card').remove()">✕</button>
     </div>
-    <textarea class="lesson-desc" placeholder="Descripción de la lección (qué va a aprender el alumno aquí)">${escapeHtml(description||'')}</textarea>
+
+    <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
+      value="${escapeHtml(l.video_url||'')}"
+      style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'?'display:none;':''}">
+
+    <div class="richtext-wrap" style="${type==='text'?'':'display:none;'}">
+      <div class="rt-toolbar">
+        <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
+        <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
+        <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+      </div>
+      <div class="lesson-richtext" contenteditable="true">${l.text_content || ''}</div>
+    </div>
+
+    <div class="quiz-builder-field" style="${type==='quiz'?'':'display:none;'}">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="openQuizBuilder(this)">Editar preguntas del cuestionario</button>
+      <span class="quiz-summary">${quizSummaryText(l.quiz)}</span>
+    </div>
+
+    <textarea class="lesson-desc" placeholder="Descripción corta de la lección (opcional, se muestra siempre)">${escapeHtml(l.description||'')}</textarea>
     <div class="lesson-links-label">Links recomendados para esta clase</div>
     <div class="links-list">${linksHtml}</div>
     <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar link</button>
   `;
   list.appendChild(card);
 }
+
+function labelForType(t){
+  return { video:'Video', image:'Imagen', document:'Documento', text:'Texto', quiz:'Cuestionario' }[t];
+}
+
+function quizSummaryText(quiz){
+  if (!quiz || !quiz.questions || !quiz.questions.length) return 'Sin preguntas todavía';
+  return quiz.questions.length + ' pregunta(s) · aprueba con ' + (quiz.passing_score || 70) + '%';
+}
+
+window.onLessonTypeChange = function(select){
+  const card = select.closest('.lesson-card');
+  const type = select.value;
+  const videoInput = card.querySelector('.lesson-video');
+  const richtextWrap = card.querySelector('.richtext-wrap');
+  const quizField = card.querySelector('.quiz-builder-field');
+
+  videoInput.style.display = (type==='text'||type==='quiz') ? 'none' : 'block';
+  videoInput.placeholder = TYPE_LABELS[type].placeholder;
+  richtextWrap.style.display = type==='text' ? 'block' : 'none';
+  quizField.style.display = type==='quiz' ? 'flex' : 'none';
+};
+
+// ---- Editor de texto simple (negrita, cursiva, insertar link) ----
+window.execRT = function(cmd, btn){
+  document.execCommand(cmd, false, null);
+  btn.closest('.richtext-wrap').querySelector('.lesson-richtext').focus();
+};
+window.execRTLink = function(btn){
+  const url = prompt('Pega el link que quieres insertar:');
+  if (!url) return;
+  const rt = btn.closest('.richtext-wrap').querySelector('.lesson-richtext');
+  rt.focus();
+  document.execCommand('createLink', false, url);
+};
 
 window.addLinkRow = function(btn){
   const list = btn.previousElementSibling;
@@ -586,6 +707,82 @@ window.addLinkRow = function(btn){
 function escapeHtml(str){
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ---- Constructor de cuestionario ----
+let quizEditingCard = null;
+const quizModal = document.getElementById('quizModal');
+
+window.openQuizBuilder = function(btn){
+  quizEditingCard = btn.closest('.lesson-card');
+  const existing = quizEditingCard.dataset.quizJson ? JSON.parse(quizEditingCard.dataset.quizJson) : null;
+  document.getElementById('quizPassingScore').value = existing ? (existing.passing_score || 70) : 70;
+  document.getElementById('questionsContainer').innerHTML = '';
+  const questions = (existing && existing.questions) || [];
+  if (questions.length){
+    questions.forEach(q => addQuestionBlock(q));
+  } else {
+    addQuestionBlock(null);
+  }
+  quizModal.classList.add('open');
+};
+
+document.getElementById('cancelQuizBtn').addEventListener('click', ()=> quizModal.classList.remove('open'));
+document.getElementById('addQuestionBtn').addEventListener('click', ()=> addQuestionBlock(null));
+
+function addQuestionBlock(q){
+  const div = document.createElement('div');
+  div.className = 'question-block';
+  const optionsHtml = (q && q.options && q.options.length ? q.options : [{option_text:'',is_correct:false},{option_text:'',is_correct:false}])
+    .map(o => optionRowHtml(o.option_text, o.is_correct)).join('');
+  div.innerHTML = `
+    <div class="q-head">
+      <input type="text" class="q-text" placeholder="Escribe la pregunta" value="${escapeHtml(q ? q.question_text : '')}">
+      <button type="button" class="icon-btn" onclick="this.closest('.question-block').remove()">✕</button>
+    </div>
+    <label class="multi-toggle"><input type="checkbox" class="q-multi" ${q && q.multi_select ? 'checked':''}> Permitir marcar varias respuestas correctas</label>
+    <div class="options-list">${optionsHtml}</div>
+    <button type="button" class="add-link" style="font-size:11.5px;" onclick="addOptionRow(this)">+ Agregar opción</button>
+  `;
+  document.getElementById('questionsContainer').appendChild(div);
+}
+
+function optionRowHtml(text, correct){
+  return `
+    <div class="option-row">
+      <input type="text" class="opt-text" placeholder="Opción de respuesta" value="${escapeHtml(text||'')}">
+      <label class="option-correct-label"><input type="checkbox" class="opt-correct" ${correct?'checked':''}> Correcta</label>
+      <button type="button" class="icon-btn" onclick="this.parentElement.remove()">✕</button>
+    </div>`;
+}
+
+window.addOptionRow = function(btn){
+  const list = btn.previousElementSibling;
+  const div = document.createElement('div');
+  div.innerHTML = optionRowHtml('', false);
+  list.appendChild(div.firstElementChild);
+};
+
+document.getElementById('saveQuizBtn').addEventListener('click', ()=>{
+  const passingScore = parseInt(document.getElementById('quizPassingScore').value || '70');
+  const questionBlocks = document.querySelectorAll('#questionsContainer .question-block');
+  const questions = [];
+  questionBlocks.forEach(qb => {
+    const questionText = qb.querySelector('.q-text').value.trim();
+    if (!questionText) return;
+    const multiSelect = qb.querySelector('.q-multi').checked;
+    const options = [...qb.querySelectorAll('.option-row')].map(row => ({
+      option_text: row.querySelector('.opt-text').value.trim(),
+      is_correct: row.querySelector('.opt-correct').checked
+    })).filter(o => o.option_text);
+    if (options.length) questions.push({ question_text: questionText, multi_select: multiSelect, options });
+  });
+
+  const quizData = { passing_score: passingScore, questions };
+  quizEditingCard.dataset.quizJson = JSON.stringify(quizData);
+  quizEditingCard.querySelector('.quiz-summary').textContent = quizSummaryText(quizData);
+  quizModal.classList.remove('open');
+  toast('Cuestionario guardado en la lección (se sube al guardar el curso) ✓');
+});
 
 // ---- Save course ----
 document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
@@ -639,23 +836,59 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const lessonCards = block.querySelectorAll('.lesson-card');
     for (const card of lessonCards){
       const lTitle = card.querySelector('.lesson-title').value.trim();
+      const lType = card.querySelector('.lesson-type').value;
       const lVideo = card.querySelector('.lesson-video').value.trim();
       const lDesc = card.querySelector('.lesson-desc').value.trim();
+      const lRichtext = card.querySelector('.lesson-richtext') ? card.querySelector('.lesson-richtext').innerHTML.trim() : '';
       if (!lTitle) continue;
       const links = [...card.querySelectorAll('.link-row')].map(r => ({
         label: r.querySelector('.link-label').value.trim(),
         url: r.querySelector('.link-url').value.trim()
       })).filter(l => l.label || l.url);
-      const { error: lErr } = await sb.from('lessons').insert({
-        chapter_id: chData.id, title: lTitle, video_url: lVideo, description: lDesc,
-        resource_links: links, position: lessonPos, content_type:'video'
-      });
+
+      const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({
+        chapter_id: chData.id, title: lTitle,
+        video_url: (lType==='text'||lType==='quiz') ? null : lVideo,
+        text_content: lType==='text' ? lRichtext : null,
+        description: lDesc, resource_links: links,
+        position: lessonPos, content_type: lType
+      }).select().single();
+
       if (lErr){
         msgEl.textContent = 'Error al guardar la lección "' + lTitle + '": ' + lErr.message + ' — Tus datos NO se perdieron, siguen en el formulario. Corrige el error e intenta guardar de nuevo.';
         msgEl.className='msg-inline error show';
         hadError = true;
         break;
       }
+
+      // Si es cuestionario, guarda la pregunta y opciones
+      if (lType === 'quiz' && card.dataset.quizJson){
+        const quizData = JSON.parse(card.dataset.quizJson);
+        if (quizData.questions && quizData.questions.length){
+          const { data: quizRow, error: qErr } = await sb.from('quizzes').insert({
+            lesson_id: lessonRow.id, title: lTitle, passing_score: quizData.passing_score || 70
+          }).select().single();
+          if (qErr){
+            msgEl.textContent = 'Error al guardar el cuestionario de "' + lTitle + '": ' + qErr.message;
+            msgEl.className='msg-inline error show';
+            hadError = true;
+            break;
+          }
+          let qPos = 0;
+          for (const q of quizData.questions){
+            const { data: questionRow, error: questionErr } = await sb.from('quiz_questions').insert({
+              quiz_id: quizRow.id, question_text: q.question_text, position: qPos
+            }).select().single();
+            if (questionErr){ hadError = true; break; }
+            qPos++;
+            const optionsPayload = q.options.map(o => ({ question_id: questionRow.id, option_text: o.option_text, is_correct: o.is_correct }));
+            const { error: optErr } = await sb.from('quiz_options').insert(optionsPayload);
+            if (optErr){ hadError = true; break; }
+          }
+        }
+      }
+      if (hadError) break;
+
       lessonPos++;
     }
     if (hadError) break;
