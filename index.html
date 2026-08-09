@@ -78,7 +78,7 @@
 
   /* OVERVIEW GRID */
   .overview{background:var(--bg);padding-top:70px;}
-  .overview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch;}
+  .overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;align-items:stretch;}
   .ov-card{background:var(--white);border-radius:16px;border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 24px -16px rgba(18,41,79,.1);}
   .ov-head{padding:18px 20px;}
   .ov-head.navy{background:var(--navy);color:#fff;}
@@ -149,6 +149,7 @@
   .materials .free-card p{color:var(--slate);}
   .materials .free-card .mat-price{font-family:'Sora',sans-serif;font-weight:800;font-size:18px;color:var(--navy);margin-bottom:12px;}
   .materials .free-card .btn{width:100%;justify-content:center;}
+  .materials .free-card a.btn-gold{color:var(--navy) !important;}
 
   .empty-catalog{color:var(--slate);font-size:14px;padding:30px;text-align:center;grid-column:1/-1;}
 
@@ -367,14 +368,20 @@
     </div>
 
     <div class="ov-card">
+      <div class="ov-head navy"><h3>Materiales de Pago</h3><span>Recursos listos para usar</span></div>
+      <div class="ov-body">
+        <ul class="ov-list" id="ovMaterialsList"><li style="color:var(--slate);font-size:12.5px;">Cargando...</li></ul>
+        <a href="#materiales" class="btn btn-gold btn-sm">Ver materiales</a>
+      </div>
+    </div>
+
+    <div class="ov-card">
       <div class="ov-head navy"><h3>¿Qué es GMAX Academy?</h3><span>Formación con propósito</span></div>
       <div class="ov-body">
         <p class="txt">La plataforma educativa de GMAX All Insurance, creada para capacitar, guiar e inspirar a futuros y actuales agentes de seguros en Texas. Todo explicado en español claro, sin enredos ni palabras técnicas — en el idioma en el que de verdad vas a entender.</p>
         <ul class="check-list">
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D69A1C" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Educación 100% en español</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D69A1C" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contenido actualizado y práctico</li>
-          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D69A1C" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Aprende a tu ritmo, desde cualquier lugar</li>
-          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D69A1C" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Enfocado en resultados reales</li>
         </ul>
       </div>
     </div>
@@ -499,6 +506,35 @@
     </div>
   </div>
 </footer>
+
+<div class="cart-overlay" id="leadGateOverlay" onclick="if(event.target===this)closeLeadGate()" style="z-index:260;">
+  <div class="cart-drawer" style="right:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:440px;max-width:92vw;border-radius:18px;max-height:90vh;">
+    <div class="cart-drawer-head">
+      <h2 id="lgTitle" style="font-size:16px;">Descargable</h2>
+      <button class="icon-close" onclick="closeLeadGate()">✕</button>
+    </div>
+    <div style="padding:24px;overflow-y:auto;">
+      <div id="lgForm">
+        <p style="font-size:13.5px;color:var(--slate);margin-bottom:18px;">Llena tus datos y te enviamos el link de descarga.</p>
+        <input type="hidden" id="lgResourceId"><input type="hidden" id="lgFileUrl">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <input type="text" id="lgFirstName" placeholder="Nombre" style="padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;">
+          <input type="text" id="lgLastName" placeholder="Apellido" style="padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;">
+        </div>
+        <input type="email" id="lgEmail" placeholder="Correo electrónico" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:10px;">
+        <input type="tel" id="lgPhone" placeholder="Teléfono" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:14px;">
+        <div id="lgMsg" style="display:none;color:#D64545;font-size:12.5px;margin-bottom:12px;"></div>
+        <button class="btn btn-gold" style="width:100%;justify-content:center;" id="lgSubmitBtn" onclick="submitLeadGate()">Obtener descargable</button>
+      </div>
+      <div id="lgSuccess" style="display:none;text-align:center;padding:10px 0;">
+        <div style="font-size:32px;margin-bottom:10px;">✓</div>
+        <h3 style="font-size:16px;color:var(--navy);margin-bottom:8px;">¡Listo!</h3>
+        <p style="font-size:13.5px;color:var(--slate);margin-bottom:18px;">Tu descargable ya está disponible.</p>
+        <a id="lgDownloadLink" href="#" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;">Descargar ahora →</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="cart-overlay" id="cartOverlay" onclick="if(event.target===this)closeCart()">
   <div class="cart-drawer">
@@ -705,14 +741,72 @@
       grid.innerHTML = '<div class="empty-catalog" style="color:#C6D2E8;">Todavía no hay recursos gratuitos publicados.</div>';
       return;
     }
-    grid.innerHTML = resources.map(r => `
+    grid.innerHTML = resources.map(r => {
+      const iconHtml = r.thumbnail_url
+        ? `<img src="${r.thumbnail_url}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;margin-bottom:16px;">`
+        : `<div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>`;
+      return `
       <div class="free-card">
-        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+        ${iconHtml}
         <h3>${r.title}</h3>
         <p>${r.description || ''}</p>
-        <a href="${r.file_url}" target="_blank">Descargar gratis →</a>
-      </div>`).join('');
+        <a href="#" onclick="event.preventDefault();openLeadGate('${r.id}','${r.title.replace(/'/g,"\\\\'")}','${r.file_url}')">Descargar gratis →</a>
+      </div>`;
+    }).join('');
   }
+
+  // ---------------- LEAD GATE (captura de datos antes de descargar) ----------------
+  window.openLeadGate = function(resourceId, title, fileUrl){
+    document.getElementById('lgTitle').textContent = title;
+    document.getElementById('lgResourceId').value = resourceId;
+    document.getElementById('lgFileUrl').value = fileUrl;
+    document.getElementById('lgFirstName').value = '';
+    document.getElementById('lgLastName').value = '';
+    document.getElementById('lgEmail').value = '';
+    document.getElementById('lgPhone').value = '';
+    document.getElementById('lgForm').style.display = 'block';
+    document.getElementById('lgSuccess').style.display = 'none';
+    document.getElementById('lgMsg').style.display = 'none';
+    document.getElementById('leadGateOverlay').classList.add('open');
+  };
+  window.closeLeadGate = function(){
+    document.getElementById('leadGateOverlay').classList.remove('open');
+  };
+  window.submitLeadGate = async function(){
+    const firstName = document.getElementById('lgFirstName').value.trim();
+    const lastName = document.getElementById('lgLastName').value.trim();
+    const email = document.getElementById('lgEmail').value.trim();
+    const phone = document.getElementById('lgPhone').value.trim();
+    const resourceId = document.getElementById('lgResourceId').value;
+    const fileUrl = document.getElementById('lgFileUrl').value;
+    const msgEl = document.getElementById('lgMsg');
+
+    if (!firstName || !lastName || !email || !phone){
+      msgEl.textContent = 'Por favor llena todos los campos.';
+      msgEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('lgSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+
+    const { error } = await sb.from('leads').insert({
+      full_name: firstName + ' ' + lastName, email, phone,
+      source: 'free_resource', source_detail: resourceId
+    });
+
+    btn.disabled = false; btn.textContent = 'Obtener descargable';
+
+    if (error){
+      msgEl.textContent = 'Hubo un error, intenta de nuevo.';
+      msgEl.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('lgForm').style.display = 'none';
+    document.getElementById('lgSuccess').style.display = 'block';
+    document.getElementById('lgDownloadLink').href = fileUrl;
+  };
 
   // ---------------- MATERIALES DE PAGO ----------------
   async function loadMaterials(){
@@ -792,6 +886,14 @@
       resourcesList.innerHTML = resources.map(r => `<li><a href="#recursos">${r.title} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>`).join('');
     } else {
       resourcesList.innerHTML = '<li style="color:var(--slate);font-size:12.5px;padding:10px 0;">Muy pronto vas a tener descargables gratis aquí.</li>';
+    }
+
+    const { data: materials } = await sb.from('materials').select('title').eq('status','published').order('created_at',{ascending:false}).limit(3);
+    const materialsList = document.getElementById('ovMaterialsList');
+    if (materials && materials.length){
+      materialsList.innerHTML = materials.map(m => `<li><a href="#materiales">${m.title} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>`).join('');
+    } else {
+      materialsList.innerHTML = '<li style="color:var(--slate);font-size:12.5px;padding:10px 0;">Muy pronto vas a tener materiales de pago aquí.</li>';
     }
   }
 </script>
