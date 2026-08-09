@@ -353,11 +353,7 @@
     <div class="ov-card">
       <div class="ov-head navy"><h3>Catálogo de Cursos</h3><span>Encuentra el curso ideal para ti</span></div>
       <div class="ov-body">
-        <ul class="ov-list">
-          <li><a href="#catalogo">Crea tu Agencia de Seguros desde Cero <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-          <li><a href="#catalogo">Prepárate para tu Examen de Licencia — Texas <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-          <li><a href="#catalogo">Cursos para Agentes y Desarrollo Profesional <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-        </ul>
+        <ul class="ov-list" id="ovCoursesList"><li style="color:var(--slate);font-size:12.5px;">Cargando...</li></ul>
         <a href="#catalogo" class="btn btn-gold btn-sm">Ver todos los cursos</a>
       </div>
     </div>
@@ -365,11 +361,7 @@
     <div class="ov-card">
       <div class="ov-head gold"><h3>Descargables Gratuitos</h3><span>Recursos que impulsan tu aprendizaje</span></div>
       <div class="ov-body">
-        <ul class="ov-list">
-          <li><a href="#recursos">Checklist: Requisitos de licencia en TX <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-          <li><a href="#recursos">Guía: Elige tu primera aseguradora <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-          <li><a href="#recursos">Plantilla: Estructura de tu agencia <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>
-        </ul>
+        <ul class="ov-list" id="ovResourcesList"><li style="color:var(--slate);font-size:12.5px;">Cargando...</li></ul>
         <a href="#recursos" class="btn btn-primary btn-sm">Ver descargables</a>
       </div>
     </div>
@@ -783,6 +775,25 @@
   loadCourses();
   loadFreeResources();
   loadMaterials();
+  loadOverviewLists();
+
+  async function loadOverviewLists(){
+    const { data: courses } = await sb.from('courses').select('title').eq('status','published').order('created_at',{ascending:true}).limit(3);
+    const coursesList = document.getElementById('ovCoursesList');
+    if (courses && courses.length){
+      coursesList.innerHTML = courses.map(c => `<li><a href="#catalogo">${c.title} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>`).join('');
+    } else {
+      coursesList.innerHTML = '<li style="color:var(--slate);font-size:12.5px;padding:10px 0;">Muy pronto vas a ver aquí nuestros cursos.</li>';
+    }
+
+    const { data: resources } = await sb.from('free_resources').select('title').eq('status','published').order('created_at',{ascending:false}).limit(3);
+    const resourcesList = document.getElementById('ovResourcesList');
+    if (resources && resources.length){
+      resourcesList.innerHTML = resources.map(r => `<li><a href="#recursos">${r.title} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>`).join('');
+    } else {
+      resourcesList.innerHTML = '<li style="color:var(--slate);font-size:12.5px;padding:10px 0;">Muy pronto vas a tener descargables gratis aquí.</li>';
+    }
+  }
 </script>
 
 </body>

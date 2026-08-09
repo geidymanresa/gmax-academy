@@ -357,7 +357,7 @@
       </div>
       <div class="form-row"><label>Valor</label><input type="number" id="couponValue" placeholder="20"></div>
     </div>
-    <div class="form-row"><label>Aplica a</label><select id="couponCourse"><option value="">Todos los cursos</option></select></div>
+    <div class="form-row"><label>Aplica a</label><select id="couponCourse"><option value="">Todo (cursos y materiales)</option></select></div>
     <div class="form-grid-2">
       <div class="form-row"><label>Usos máximos (opcional)</label><input type="number" id="couponMaxUses" placeholder="Ilimitado"></div>
       <div class="form-row"><label>Expira el (opcional)</label><input type="date" id="couponExpires"></div>
@@ -371,12 +371,40 @@
 
 <!-- MODAL: RECURSO GRATIS -->
 <div class="modal-overlay" id="resourceModal">
-  <div class="modal" style="max-width:480px;">
-    <h2>Nuevo recurso gratuito</h2>
+  <div class="modal" style="max-width:520px;">
+    <h2 id="resourceModalTitle">Nuevo recurso gratuito</h2>
     <div class="msg-inline" id="resourceMsg"></div>
     <div class="form-row"><label>Título</label><input type="text" id="resourceTitle" placeholder="Ej. Checklist: Requisitos de licencia en Texas"></div>
     <div class="form-row"><label>Descripción</label><textarea id="resourceDesc"></textarea></div>
-    <div class="form-row"><label>Link del archivo (PDF, etc.)</label><input type="text" id="resourceFileUrl" placeholder="https://..."></div>
+
+    <div class="form-row">
+      <label>Imagen / ícono de portada</label>
+      <div id="resThumbPreviewWrap" style="display:none;margin-bottom:10px;">
+        <img id="resThumbPreview" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="resourceThumbnail" placeholder="https://... o dale a Subir imagen" style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="uploadResThumbBtn" onclick="document.getElementById('resThumbFileInput').click()">📤 Subir</button>
+        <input type="file" id="resThumbFileInput" accept="image/*" style="display:none;" onchange="uploadResourceThumbnail(this)">
+      </div>
+    </div>
+
+    <div class="form-row"><label>Tipo de contenido</label>
+      <select id="resourceType" onchange="onResourceTypeChange()">
+        <option value="document">📄 Documento (PDF, Word, etc.)</option>
+        <option value="image">🖼️ Imagen</option>
+        <option value="video">🎥 Video (link de YouTube, Bunny, etc.)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label id="resourceFileLabel">Link del documento</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="resourceFileUrl" placeholder="https://..." style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="uploadResFileBtn" onclick="document.getElementById('resFileInput').click()">📤 Subir</button>
+        <input type="file" id="resFileInput" style="display:none;" onchange="uploadResourceContentFile(this)">
+      </div>
+    </div>
+
     <div class="modal-foot">
       <button class="btn btn-ghost" id="cancelResourceBtn">Cancelar</button>
       <button class="btn btn-primary" id="saveResourceBtn">Guardar recurso</button>
@@ -386,11 +414,40 @@
 
 <!-- MODAL: MATERIAL DE PAGO -->
 <div class="modal-overlay" id="materialModal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:520px;">
     <h2 id="materialModalTitle">Nuevo material de pago</h2>
     <div class="msg-inline" id="materialMsg"></div>
     <div class="form-row"><label>Título</label><input type="text" id="materialTitle" placeholder="Ej. Resumen: Guía Rápida de Pólizas Auto"></div>
     <div class="form-row"><label>Descripción</label><textarea id="materialDesc" placeholder="Qué incluye este material"></textarea></div>
+
+    <div class="form-row">
+      <label>Imagen / ícono de portada</label>
+      <div id="matThumbPreviewWrap" style="display:none;margin-bottom:10px;">
+        <img id="matThumbPreview" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="materialThumbnail" placeholder="https://... o dale a Subir imagen" style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="uploadMatThumbBtn" onclick="document.getElementById('matThumbFileInput').click()">📤 Subir</button>
+        <input type="file" id="matThumbFileInput" accept="image/*" style="display:none;" onchange="uploadMaterialThumbnail(this)">
+      </div>
+    </div>
+
+    <div class="form-row"><label>Tipo de contenido</label>
+      <select id="materialType" onchange="onMaterialTypeChange()">
+        <option value="document">📄 Documento (PDF, Word, etc.)</option>
+        <option value="image">🖼️ Imagen</option>
+        <option value="video">🎥 Video (link de YouTube, Bunny, etc.)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label id="materialFileLabel">Link del documento</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="materialFileUrl" placeholder="https://..." style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="uploadMatFileBtn" onclick="document.getElementById('matFileInput').click()">📤 Subir</button>
+        <input type="file" id="matFileInput" style="display:none;" onchange="uploadMaterialFile(this)">
+      </div>
+    </div>
+
     <div class="form-grid-2">
       <div class="form-row"><label>Precio (USD)</label><input type="number" id="materialPrice" placeholder="15"></div>
       <div class="form-row"><label>Estado</label>
@@ -400,7 +457,6 @@
         </select>
       </div>
     </div>
-    <div class="form-row"><label>Link del archivo (PDF, etc.)</label><input type="text" id="materialFileUrl" placeholder="https://..."></div>
     <div class="modal-foot">
       <button class="btn btn-ghost" id="cancelMaterialBtn">Cancelar</button>
       <button class="btn btn-primary" id="saveMaterialBtn">Guardar material</button>
@@ -1088,10 +1144,14 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
 // ---------- CUPONES ----------
 async function loadCoupons(){
   const { data: courses } = await sb.from('courses').select('id, title');
+  const { data: materials } = await sb.from('materials').select('id, title');
   const sel = document.getElementById('couponCourse');
-  sel.innerHTML = '<option value="">Todos los cursos</option>' + (courses||[]).map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
+  let optionsHtml = '<option value="">Todo (cursos y materiales)</option>';
+  if (courses && courses.length) optionsHtml += `<optgroup label="Cursos">${courses.map(c=>`<option value="course:${c.id}">${c.title}</option>`).join('')}</optgroup>`;
+  if (materials && materials.length) optionsHtml += `<optgroup label="Materiales">${materials.map(m=>`<option value="material:${m.id}">${m.title}</option>`).join('')}</optgroup>`;
+  sel.innerHTML = optionsHtml;
 
-  const { data: coupons, error } = await sb.from('coupons').select('*, courses(title)').order('created_at', {ascending:false});
+  const { data: coupons, error } = await sb.from('coupons').select('*, courses(title), materials(title)').order('created_at', {ascending:false});
   const body = document.getElementById('couponsBody');
   if (error || !coupons || coupons.length === 0){
     body.innerHTML = '<tr><td colspan="7" class="empty-state">No hay cupones creados todavía.</td></tr>';
@@ -1102,7 +1162,7 @@ async function loadCoupons(){
       <td><b>${c.code}</b></td>
       <td>${couponTypeLabel(c.discount_type)}</td>
       <td>${c.discount_type==='percent' ? c.discount_value+'%' : c.discount_type==='fixed' ? '$'+c.discount_value : '—'}</td>
-      <td>${c.courses ? c.courses.title : 'Todos'}</td>
+      <td>${c.courses ? c.courses.title : c.materials ? c.materials.title : 'Todo'}</td>
       <td>${c.used_count}${c.max_uses ? ' / '+c.max_uses : ''}</td>
       <td>${c.expires_at ? formatDate(c.expires_at) : 'Sin expiración'}</td>
       <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${c.id}', ${c.active})">${c.active ? 'Desactivar' : 'Activar'}</button></td>
@@ -1133,7 +1193,10 @@ document.getElementById('saveCouponBtn').addEventListener('click', async ()=>{
   const code = document.getElementById('couponCode').value.trim().toUpperCase();
   const type = document.getElementById('couponType').value;
   const value = parseFloat(document.getElementById('couponValue').value || '0');
-  const courseId = document.getElementById('couponCourse').value || null;
+  const target = document.getElementById('couponCourse').value; // '', 'course:id', o 'material:id'
+  let courseId = null, materialId = null;
+  if (target.startsWith('course:')) courseId = target.split(':')[1];
+  else if (target.startsWith('material:')) materialId = target.split(':')[1];
   const maxUses = document.getElementById('couponMaxUses').value ? parseInt(document.getElementById('couponMaxUses').value) : null;
   const expires = document.getElementById('couponExpires').value || null;
   const msgEl = document.getElementById('couponMsg');
@@ -1141,7 +1204,7 @@ document.getElementById('saveCouponBtn').addEventListener('click', async ()=>{
   if (!code){ msgEl.textContent='El código es obligatorio.'; msgEl.className='msg-inline error show'; return; }
 
   const { error } = await sb.from('coupons').insert({
-    code, discount_type: type, discount_value: value, course_id: courseId,
+    code, discount_type: type, discount_value: value, course_id: courseId, material_id: materialId,
     max_uses: maxUses, expires_at: expires, created_by: currentUser.id
   });
   if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className='msg-inline error show'; return; }
@@ -1164,7 +1227,10 @@ async function loadResources(){
     <tr>
       <td><b>${r.title}</b></td>
       <td><span class="badge badge-${r.status==='published'?'published':'draft'}">${r.status==='published'?'Publicado':'Borrador'}</span></td>
-      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="toggleResource('${r.id}','${r.status}')">${r.status==='published'?'Despublicar':'Publicar'}</button></td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="editResource('${r.id}')">Editar</button>
+        <button class="btn btn-sm ${r.status==='published' ? 'btn-danger' : 'btn-gold'}" onclick="toggleResource('${r.id}','${r.status}')">${r.status==='published'?'Despublicar':'Publicar'}</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -1175,32 +1241,111 @@ window.toggleResource = async function(id, status){
   loadResources();
 };
 
+let editingResourceId = null;
 const resourceModal = document.getElementById('resourceModal');
+
+function onResourceTypeChange(){
+  const type = document.getElementById('resourceType').value;
+  const label = document.getElementById('resourceFileLabel');
+  const uploadBtn = document.getElementById('uploadResFileBtn');
+  if (type === 'document'){ label.textContent = 'Link del documento'; uploadBtn.style.display='inline-flex'; }
+  else if (type === 'image'){ label.textContent = 'Link de la imagen'; uploadBtn.style.display='inline-flex'; }
+  else { label.textContent = 'Link del video (YouTube, Bunny, etc.)'; uploadBtn.style.display='none'; }
+}
+
+function updateResThumbPreview(url){
+  const wrap = document.getElementById('resThumbPreviewWrap');
+  const img = document.getElementById('resThumbPreview');
+  if (url){ img.src = url; wrap.style.display='block'; } else { wrap.style.display='none'; }
+}
+document.getElementById('resourceThumbnail').addEventListener('input', e => updateResThumbPreview(e.target.value.trim()));
+
+window.uploadResourceThumbnail = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const btn = document.getElementById('uploadResThumbBtn');
+  btn.textContent = '⏳'; btn.disabled = true;
+  const path = `resources/thumb-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_')}`;
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){ toast('Error: ' + error.message, true); btn.textContent='📤 Subir'; btn.disabled=false; return; }
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  document.getElementById('resourceThumbnail').value = pub.publicUrl;
+  updateResThumbPreview(pub.publicUrl);
+  btn.textContent = '✓'; btn.disabled = false;
+  toast('Imagen subida ✓');
+};
+
+window.uploadResourceContentFile = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const btn = document.getElementById('uploadResFileBtn');
+  btn.textContent = '⏳'; btn.disabled = true;
+  const path = `resources/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_')}`;
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){ toast('Error: ' + error.message, true); btn.textContent='📤 Subir'; btn.disabled=false; return; }
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  document.getElementById('resourceFileUrl').value = pub.publicUrl;
+  btn.textContent = '✓'; btn.disabled = false;
+  toast('Archivo subido ✓');
+};
+
 document.getElementById('newResourceBtn').addEventListener('click', ()=>{
+  editingResourceId = null;
+  document.getElementById('resourceModalTitle').textContent = 'Nuevo recurso gratuito';
   document.getElementById('resourceTitle').value='';
   document.getElementById('resourceDesc').value='';
+  document.getElementById('resourceThumbnail').value='';
+  updateResThumbPreview('');
+  document.getElementById('resourceType').value='document';
+  onResourceTypeChange();
   document.getElementById('resourceFileUrl').value='';
   document.getElementById('resourceMsg').className='msg-inline';
   resourceModal.classList.add('open');
 });
 document.getElementById('cancelResourceBtn').addEventListener('click', ()=> resourceModal.classList.remove('open'));
 
+window.editResource = async function(id){
+  const { data: r } = await sb.from('free_resources').select('*').eq('id', id).single();
+  if (!r){ toast('No se pudo cargar el recurso', true); return; }
+  editingResourceId = id;
+  document.getElementById('resourceModalTitle').textContent = 'Editar recurso gratuito';
+  document.getElementById('resourceTitle').value = r.title;
+  document.getElementById('resourceDesc').value = r.description || '';
+  document.getElementById('resourceThumbnail').value = r.thumbnail_url || '';
+  updateResThumbPreview(r.thumbnail_url || '');
+  document.getElementById('resourceType').value = r.content_type || 'document';
+  onResourceTypeChange();
+  document.getElementById('resourceFileUrl').value = r.file_url || '';
+  document.getElementById('resourceMsg').className='msg-inline';
+  resourceModal.classList.add('open');
+};
+
 document.getElementById('saveResourceBtn').addEventListener('click', async ()=>{
   const title = document.getElementById('resourceTitle').value.trim();
   const desc = document.getElementById('resourceDesc').value.trim();
+  const thumbnail = document.getElementById('resourceThumbnail').value.trim();
+  const contentType = document.getElementById('resourceType').value;
   const fileUrl = document.getElementById('resourceFileUrl').value.trim();
   const msgEl = document.getElementById('resourceMsg');
 
-  if (!title || !fileUrl){ msgEl.textContent='Título y link del archivo son obligatorios.'; msgEl.className='msg-inline error show'; return; }
+  if (!title || !fileUrl){ msgEl.textContent='Título y link del contenido son obligatorios.'; msgEl.className='msg-inline error show'; return; }
   const slug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
-  const { error } = await sb.from('free_resources').insert({ title, description: desc, file_url: fileUrl, slug, status:'published' });
+  const payload = { title, description: desc, thumbnail_url: thumbnail, content_type: contentType, file_url: fileUrl, slug };
+
+  let error;
+  if (editingResourceId){
+    ({ error } = await sb.from('free_resources').update(payload).eq('id', editingResourceId));
+  } else {
+    ({ error } = await sb.from('free_resources').insert({ ...payload, status:'published' }));
+  }
   if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className='msg-inline error show'; return; }
 
   resourceModal.classList.remove('open');
-  toast('Recurso creado ✓');
+  toast('Recurso guardado ✓');
   loadResources();
 });
+
 
 // ---------- MATERIALES DE PAGO ----------
 async function loadMaterials(){
@@ -1236,11 +1381,60 @@ window.toggleMaterialStatus = async function(id, currentStatus){
 let editingMaterialId = null;
 const materialModal = document.getElementById('materialModal');
 
+function onMaterialTypeChange(){
+  const type = document.getElementById('materialType').value;
+  const label = document.getElementById('materialFileLabel');
+  const uploadBtn = document.getElementById('uploadMatFileBtn');
+  if (type === 'document'){ label.textContent = 'Link del documento'; uploadBtn.style.display='inline-flex'; }
+  else if (type === 'image'){ label.textContent = 'Link de la imagen'; uploadBtn.style.display='inline-flex'; }
+  else { label.textContent = 'Link del video (YouTube, Bunny, etc.)'; uploadBtn.style.display='none'; }
+}
+
+function updateMatThumbPreview(url){
+  const wrap = document.getElementById('matThumbPreviewWrap');
+  const img = document.getElementById('matThumbPreview');
+  if (url){ img.src = url; wrap.style.display='block'; } else { wrap.style.display='none'; }
+}
+document.getElementById('materialThumbnail').addEventListener('input', e => updateMatThumbPreview(e.target.value.trim()));
+
+window.uploadMaterialThumbnail = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const btn = document.getElementById('uploadMatThumbBtn');
+  btn.textContent = '⏳'; btn.disabled = true;
+  const path = `materials/thumb-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_')}`;
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){ toast('Error: ' + error.message, true); btn.textContent='📤 Subir'; btn.disabled=false; return; }
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  document.getElementById('materialThumbnail').value = pub.publicUrl;
+  updateMatThumbPreview(pub.publicUrl);
+  btn.textContent = '✓'; btn.disabled = false;
+  toast('Imagen subida ✓');
+};
+
+window.uploadMaterialFile = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const btn = document.getElementById('uploadMatFileBtn');
+  btn.textContent = '⏳'; btn.disabled = true;
+  const path = `materials/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_')}`;
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){ toast('Error: ' + error.message, true); btn.textContent='📤 Subir'; btn.disabled=false; return; }
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  document.getElementById('materialFileUrl').value = pub.publicUrl;
+  btn.textContent = '✓'; btn.disabled = false;
+  toast('Archivo subido ✓');
+};
+
 document.getElementById('newMaterialBtn').addEventListener('click', ()=>{
   editingMaterialId = null;
   document.getElementById('materialModalTitle').textContent = 'Nuevo material de pago';
   document.getElementById('materialTitle').value = '';
   document.getElementById('materialDesc').value = '';
+  document.getElementById('materialThumbnail').value = '';
+  updateMatThumbPreview('');
+  document.getElementById('materialType').value = 'document';
+  onMaterialTypeChange();
   document.getElementById('materialPrice').value = '';
   document.getElementById('materialStatus').value = 'draft';
   document.getElementById('materialFileUrl').value = '';
@@ -1256,6 +1450,10 @@ window.editMaterial = async function(id){
   document.getElementById('materialModalTitle').textContent = 'Editar material';
   document.getElementById('materialTitle').value = m.title;
   document.getElementById('materialDesc').value = m.description || '';
+  document.getElementById('materialThumbnail').value = m.thumbnail_url || '';
+  updateMatThumbPreview(m.thumbnail_url || '');
+  document.getElementById('materialType').value = m.content_type || 'document';
+  onMaterialTypeChange();
   document.getElementById('materialPrice').value = (m.price_cents/100);
   document.getElementById('materialStatus').value = m.status;
   document.getElementById('materialFileUrl').value = m.file_url || '';
@@ -1266,14 +1464,16 @@ window.editMaterial = async function(id){
 document.getElementById('saveMaterialBtn').addEventListener('click', async ()=>{
   const title = document.getElementById('materialTitle').value.trim();
   const desc = document.getElementById('materialDesc').value.trim();
+  const thumbnail = document.getElementById('materialThumbnail').value.trim();
+  const contentType = document.getElementById('materialType').value;
   const price = parseFloat(document.getElementById('materialPrice').value || '0');
   const status = document.getElementById('materialStatus').value;
   const fileUrl = document.getElementById('materialFileUrl').value.trim();
   const msgEl = document.getElementById('materialMsg');
 
-  if (!title || !fileUrl){ msgEl.textContent = 'Título y link del archivo son obligatorios.'; msgEl.className = 'msg-inline error show'; return; }
+  if (!title || !fileUrl){ msgEl.textContent = 'Título y link del contenido son obligatorios.'; msgEl.className = 'msg-inline error show'; return; }
 
-  const payload = { title, description: desc, price_cents: Math.round(price*100), status, file_url: fileUrl };
+  const payload = { title, description: desc, thumbnail_url: thumbnail, content_type: contentType, price_cents: Math.round(price*100), status, file_url: fileUrl };
 
   let error;
   if (editingMaterialId){
@@ -1287,6 +1487,7 @@ document.getElementById('saveMaterialBtn').addEventListener('click', async ()=>{
   toast('Material guardado ✓');
   loadMaterials();
 });
+
 
 // ---------- LEADS ----------
 async function loadLeads(){
