@@ -71,6 +71,7 @@
   .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.02em;}
   .badge-published{background:#E8F3EA;color:var(--success);}
   .badge-draft{background:#F0F1F5;color:var(--slate);}
+  .badge-coming_soon{background:#FBF0D9;color:var(--gold-dark);}
   .badge-archived{background:#FCE9E9;color:var(--error);}
   .empty-state{padding:50px 22px;text-align:center;color:var(--slate);font-size:14px;}
 
@@ -299,6 +300,7 @@
     <div class="form-row"><label>Estado</label>
       <select id="courseStatus">
         <option value="draft">Borrador (no visible al público)</option>
+        <option value="coming_soon">Próximo lanzamiento (visible como "Próximamente" + captura leads)</option>
         <option value="published">Publicado</option>
         <option value="archived">Archivado</option>
       </select>
@@ -519,7 +521,7 @@ async function loadCourses(){
   }));
   body.innerHTML = rows.join('');
 }
-function statusLabel(s){ return { draft:'Borrador', published:'Publicado', archived:'Archivado' }[s] || s; }
+function statusLabel(s){ return { draft:'Borrador', coming_soon:'Próximo lanzamiento', published:'Publicado', archived:'Archivado' }[s] || s; }
 
 async function toggleCourseStatus(id, currentStatus){
   const newStatus = currentStatus === 'published' ? 'draft' : 'published';

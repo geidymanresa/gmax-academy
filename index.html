@@ -40,6 +40,8 @@
   .navlinks a{font-size:15px;font-weight:600;color:var(--slate);transition:color .2s;}
   .navlinks a:hover{color:var(--blue);}
   .hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:38px;height:38px;border:1.5px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;flex:none;}
+  .cart-btn{position:relative;width:42px;height:42px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .cart-badge{position:absolute;top:-6px;right:-6px;background:var(--gold);color:var(--navy);font-family:'Sora',sans-serif;font-size:10.5px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
   .hamburger span{display:block;width:18px;height:2px;background:var(--navy);margin:0 auto;border-radius:2px;transition:transform .2s, opacity .2s;}
   .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
   .hamburger.open span:nth-child(2){opacity:0;}
@@ -140,9 +142,50 @@
   .free-card p{font-size:13px;color:#B7C2DA;margin-bottom:16px;}
   .free-card a{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:var(--gold);display:inline-flex;align-items:center;gap:6px;}
 
+  .materials{background:var(--bg);}
+  .materials .free-card{background:#fff;border:1px solid var(--line);}
+  .materials .free-card:hover{background:#fff;box-shadow:0 8px 20px -12px rgba(18,41,79,.15);}
+  .materials .free-card h3{color:var(--navy);}
+  .materials .free-card p{color:var(--slate);}
+  .materials .free-card .mat-price{font-family:'Sora',sans-serif;font-weight:800;font-size:18px;color:var(--navy);margin-bottom:12px;}
+  .materials .free-card .btn{width:100%;justify-content:center;}
+
+  .empty-catalog{color:var(--slate);font-size:14px;padding:30px;text-align:center;grid-column:1/-1;}
+
+  .cart-overlay{display:none;position:fixed;inset:0;background:rgba(15,36,71,.5);z-index:250;}
+  .cart-overlay.open{display:block;}
+  .cart-drawer{position:absolute;right:0;top:0;bottom:0;width:420px;max-width:92vw;background:#fff;display:flex;flex-direction:column;}
+  .cart-drawer-head{display:flex;justify-content:space-between;align-items:center;padding:22px 24px;border-bottom:1px solid var(--line);}
+  .cart-drawer-head h2{font-size:18px;font-weight:800;color:var(--navy);}
+  .icon-close{background:none;border:none;font-size:16px;color:var(--slate);cursor:pointer;}
+  .cart-items{flex:1;overflow-y:auto;padding:16px 24px;}
+  .cart-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);}
+  .cart-item .ci-title{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .cart-item .ci-price{font-size:13px;color:var(--slate);}
+  .cart-item .ci-remove{background:none;border:none;color:#D64545;font-size:13px;cursor:pointer;}
+  .cart-foot{padding:20px 24px;border-top:1px solid var(--line);}
+  .cart-total-row{display:flex;justify-content:space-between;font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:var(--navy);}
+  .cart-empty-msg{color:var(--slate);font-size:13.5px;text-align:center;padding:40px 10px;}
+
+  .coming-soon-card{background:var(--white);border:1.5px dashed var(--line);border-radius:18px;padding:28px 26px;display:flex;flex-direction:column;justify-content:space-between;}
+  .coming-soon-card .cs-badge{align-self:flex-start;background:var(--bg);color:var(--slate);font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;padding:5px 12px;border-radius:100px;text-transform:uppercase;margin-bottom:14px;}
+  .coming-soon-card h3{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:9px;}
+  .coming-soon-card p{font-size:13.5px;color:var(--slate);margin-bottom:18px;}
+  .waitlist-form{display:none;gap:8px;margin-top:10px;}
+  .waitlist-form.open{display:flex;flex-direction:column;}
+  .waitlist-form input{padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;}
+  .waitlist-msg{font-size:12.5px;margin-top:8px;display:none;}
+  .waitlist-msg.ok{display:block;color:var(--success, #2A7A3B);}
+
   /* TEAM */
   .team{background:var(--white);}
   .team-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .magazine-layout{display:grid;grid-template-columns:.85fr 1.15fr;gap:44px;align-items:center;}
+  .magazine-photo{aspect-ratio:4/5;border-radius:20px;background-size:cover;background-position:center top;box-shadow:0 24px 50px -18px rgba(15,36,71,.35);}
+  .magazine-text h3{font-size:26px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+  .magazine-text .role{display:block;font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;}
+  .magazine-text p{font-size:15px;color:var(--slate);line-height:1.8;margin-bottom:14px;}
+  @media(max-width:760px){ .magazine-layout{grid-template-columns:1fr;} .magazine-photo{aspect-ratio:16/10;} }
   .team-card{background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:28px;display:flex;gap:18px;}
   .team-photo{width:72px;height:72px;flex:none;border-radius:16px;background:linear-gradient(160deg,var(--blue-light),var(--navy));display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:800;font-size:22px;color:#fff;}
   .team-card h3{font-size:16.5px;font-weight:700;color:var(--navy);margin-bottom:3px;}
@@ -237,10 +280,16 @@
       <a href="#nosotros">Nosotros</a>
       <a href="#catalogo">Cursos</a>
       <a href="#recursos">Recursos Gratis</a>
+      <a href="#materiales">Materiales</a>
       <a href="#equipo">Equipo</a>
       <a href="https://gmaxallinsurance.com/" target="_blank">GMAX All Insurance ↗</a>
     </div>
-    <a href="login.html" class="btn btn-primary btn-sm nav-login-btn" id="navLoginBtn">Iniciar Sesión</a>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="cart-btn" id="cartBtn" onclick="openCart()" title="Carrito">
+        🛒<span class="cart-badge" id="cartBadge" style="display:none;">0</span>
+      </button>
+      <a href="login.html" class="btn btn-primary btn-sm nav-login-btn" id="navLoginBtn">Iniciar Sesión</a>
+    </div>
     <button class="hamburger" id="hamburgerBtn" aria-label="Menú"><span></span><span></span><span></span></button>
   </nav>
   <div class="mobile-menu" id="mobileMenu">
@@ -363,33 +412,8 @@
       <h2>Cursos disponibles</h2>
       <p>Contenido basado en experiencia real de agencia, sin teoría innecesaria.</p>
     </div>
-    <div class="cards">
-      <div class="course-card">
-        <div class="course-media" style="background:none;">
-          <img src="https://kxdkmtpyduuruhhzfpmg.supabase.co/storage/v1/object/public/course-resources/courses/1786235570283-WhatsApp_Image_2026-08-08_at_7.30.05_PM.jpeg" alt="Crea Tu Propia Agencia de Seguros en Texas" style="width:100%;height:100%;object-fit:cover;">
-          <span class="course-badge">Curso disponible</span>
-        </div>
-        <div class="course-body">
-          <h3><a href="#" onclick="openProduct(event)" style="color:inherit">Crea Tu Propia Agencia de Seguros en Texas</a></h3>
-          <p>Aprende paso a paso cómo obtener tus licencias, crear tu agencia, conseguir contratos con aseguradoras, cotizar pólizas y desarrollar un negocio real de seguros en Texas.</p>
-          <div class="course-meta"><span><b>6</b> capítulos</span><span><b>23</b> lecciones</span></div>
-          <div class="course-foot">
-            <div class="price">$257<span>&nbsp;USD</span></div>
-            <div style="display:flex;gap:10px;">
-              <a href="#" onclick="openProduct(event)" class="btn btn-ghost btn-sm">Ver detalles</a>
-              <a href="#" class="btn btn-primary btn-sm">Agregar al carrito</a>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="coming-soon">
-        <div>
-          <span class="cs-badge">Próximamente</span>
-          <h3>Prepárate para tu Examen de Licencia — Texas</h3>
-          <p>Video-lecciones, resúmenes y exámenes de práctica tipo test para aprobar tu licencia de agente de seguros en Texas a la primera.</p>
-        </div>
-        <a href="waitlist.html" class="btn btn-ghost btn-sm">Notificarme al lanzar</a>
-      </div>
+    <div class="cards" id="coursesGrid">
+      <div class="empty-catalog">Cargando cursos...</div>
     </div>
   </div>
 </section>
@@ -401,25 +425,21 @@
       <h2>Recursos para empezar hoy</h2>
       <p>Descarga contenido gratuito y recibe también nuestras guías y ofertas por correo.</p>
     </div>
-    <div class="free-grid">
-      <div class="free-card">
-        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
-        <h3>Checklist: Requisitos de licencia en Texas</h3>
-        <p>Todo lo que necesitas antes de presentarte al examen del TDI, en un solo PDF.</p>
-        <a href="#">Descargar gratis →</a>
-      </div>
-      <div class="free-card">
-        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
-        <h3>Guía: Cómo elegir tu primera aseguradora</h3>
-        <p>Criterios reales para negociar tu primer contrato como agente.</p>
-        <a href="#">Descargar gratis →</a>
-      </div>
-      <div class="free-card">
-        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
-        <h3>Plantilla: Estructura básica de agencia</h3>
-        <p>Organiza legal y operativamente tu futura agencia paso a paso.</p>
-        <a href="#">Descargar gratis →</a>
-      </div>
+    <div class="free-grid" id="freeResourcesGrid">
+      <div class="empty-catalog" style="color:#C6D2E8;">Cargando recursos...</div>
+    </div>
+  </div>
+</section>
+
+<section class="materials" id="materiales">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Materiales</div>
+      <h2>Materiales descargables de pago</h2>
+      <p>Resúmenes, guías y plantillas listas para usar, vendidas por separado de los cursos.</p>
+    </div>
+    <div class="free-grid" id="materialsGrid">
+      <div class="empty-catalog">Cargando materiales...</div>
     </div>
   </div>
 </section>
@@ -431,14 +451,13 @@
       <h2>Quién está detrás de GMAX Academy</h2>
       <p>La misma persona que dirige una agencia de seguros real en Texas.</p>
     </div>
-    <div class="team-grid" style="grid-template-columns:1fr;">
-      <div class="team-card" style="max-width:720px;">
-        <div class="team-photo" style="background-image:url('geidy-photo.jpg');background-size:cover;background-position:center;"></div>
-        <div>
-          <h3>Geidy Manresa</h3>
-          <span class="role">Fundadora, CEO &amp; Instructora Principal</span>
-          <p>Hola, soy Geidy Manresa, fundadora y CEO de GMAX All Insurance y creadora de GMAX Insurance Academy. Creé esta plataforma 100% en español para ayudarte a crecer en la industria de los seguros. Aquí aprenderás desde cómo obtener tu licencia hasta cómo crear tu propia agencia y comenzar tu carrera en esta industria con el pie derecho. Todo el contenido está basado en experiencia real y enfocado en ayudarte a desarrollarte como un agente profesional. Estoy emocionada de acompañarte en este proceso y ayudarte a dar el primer y los siguientes pasos en tu carrera dentro de la industria de seguros.</p>
-        </div>
+    <div class="magazine-layout">
+      <div class="magazine-photo" style="background-image:url('geidy-photo.jpg');"></div>
+      <div class="magazine-text">
+        <h3>Geidy Manresa</h3>
+        <span class="role">Fundadora, CEO &amp; Instructora Principal</span>
+        <p>Hola, soy Geidy Manresa, fundadora y CEO de GMAX All Insurance y creadora de GMAX Insurance Academy. Creé esta plataforma 100% en español para ayudarte a crecer en la industria de los seguros. Aquí aprenderás desde cómo obtener tu licencia hasta cómo crear tu propia agencia y comenzar tu carrera en esta industria con el pie derecho.</p>
+        <p>Todo el contenido está basado en experiencia real y enfocado en ayudarte a desarrollarte como un agente profesional. Estoy emocionada de acompañarte en este proceso y ayudarte a dar el primer y los siguientes pasos en tu carrera dentro de la industria de seguros.</p>
       </div>
     </div>
   </div>
@@ -489,17 +508,31 @@
   </div>
 </footer>
 
+<div class="cart-overlay" id="cartOverlay" onclick="if(event.target===this)closeCart()">
+  <div class="cart-drawer">
+    <div class="cart-drawer-head">
+      <h2>Tu carrito</h2>
+      <button class="icon-close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-foot">
+      <div class="cart-total-row"><span>Total</span><span id="cartTotal">$0</span></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="checkoutCart()">Proceder al pago</button>
+    </div>
+  </div>
+</div>
+
 <div class="product-page" id="productPage">
   <div class="p-header">
     <div class="wrap">
       <div class="p-back" onclick="closeProduct()">← Volver al catálogo</div>
-      <span class="course-badge">Curso disponible</span>
-      <h1>Crea Tu Propia Agencia de Seguros en Texas</h1>
-      <p class="lead">Aprende paso a paso cómo obtener tus licencias, crear tu agencia, conseguir contratos con aseguradoras, cotizar pólizas y desarrollar un negocio real de seguros en Texas.</p>
+      <span class="course-badge" id="pBadge">Curso disponible</span>
+      <h1 id="pTitle">—</h1>
+      <p class="lead" id="pLead">—</p>
       <div class="p-meta">
-        <div><b>6</b><span>Capítulos</span></div>
-        <div><b>23</b><span>Lecciones en video</span></div>
-        <div><b>3 meses</b><span>De acceso</span></div>
+        <div><b id="pChapters">—</b><span>Capítulos</span></div>
+        <div><b id="pLessons">—</b><span>Lecciones en video</span></div>
+        <div><b id="pAccess">3 meses</b><span>De acceso</span></div>
         <div><b>Geidy Manresa</b><span>Instructora</span></div>
       </div>
     </div>
@@ -508,39 +541,20 @@
     <div class="p-layout">
       <div>
         <div class="p-card">
-          <h2>Qué vas a aprender</h2>
-          <div class="learn-grid">
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Requisitos y proceso para obtener tu licencia de agente en Texas</div>
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Cómo estructurar legalmente tu propia agencia</div>
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Cómo conseguir contratos (appointments) con aseguradoras</div>
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Cómo cotizar y estructurar pólizas correctamente</div>
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Operación diaria de una agencia real</div>
-            <div class="learn-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4C9A" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Cómo hacer crecer tu negocio de seguros</div>
-          </div>
-        </div>
-        <div class="p-card">
           <h2>Descripción</h2>
-          <p>Miles de personas obtienen una licencia de seguros, pero pocas aprenden cómo construir una agencia exitosa. En este curso descubrirás paso a paso cómo crear tu agencia en Texas, obtener contratos con aseguradoras, estructurar pólizas correctamente y administrar tu operación de manera profesional.</p>
-          <p>Si tu objetivo es dejar de depender de otras agencias y construir tu propio negocio de seguros, este curso fue diseñado para ti.</p>
+          <p id="pFullDesc">—</p>
         </div>
         <div class="p-card">
           <h2>Contenido del curso</h2>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">1. Introducción y fundamentos de la industria</span><span class="count">4 lecciones</span></div></div>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">2. Licencias y estructura legal en Texas</span><span class="count">4 lecciones</span></div></div>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">3. Cómo crear tu agencia paso a paso</span><span class="count">4 lecciones</span></div></div>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">4. Contratos con aseguradoras</span><span class="count">4 lecciones</span></div></div>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">5. Cotización y estructuración de pólizas</span><span class="count">4 lecciones</span></div></div>
-          <div class="curriculum-item"><div class="curriculum-head"><span class="name">6. Operaciones diarias y crecimiento</span><span class="count">3 lecciones</span></div></div>
-          <p class="p-note">Nombres de capítulos de ejemplo — los ajustamos al temario exacto cuando me pases la lista real de lecciones.</p>
+          <div id="pCurriculum"><p class="p-note">Cargando temario...</p></div>
         </div>
       </div>
       <div class="p-buybox">
-        <div class="price">$257<span>&nbsp;USD</span></div>
+        <div class="price" id="pPrice">$0<span>&nbsp;USD</span></div>
         <div class="access">Acceso por 3 meses · 1 dispositivo activo a la vez</div>
-        <a href="#" class="btn btn-primary">Agregar al carrito</a>
-        <a href="#" class="btn btn-ghost">Comprar ahora</a>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="pAddCartBtn">Agregar al carrito</button>
         <ul class="p-includes">
-          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 23 lecciones en video, 100% en español</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Video en español, 100% online</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Materiales descargables por capítulo</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Exámenes de práctica tipo test</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Impartido por Geidy Manresa</li>
@@ -550,9 +564,225 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-  function openProduct(e){e.preventDefault();document.getElementById('productPage').classList.add('open');document.getElementById('productPage').scrollTop=0;document.body.style.overflow='hidden';}
-  function closeProduct(){document.getElementById('productPage').classList.remove('open');document.body.style.overflow='auto';}
+  const SUPABASE_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_dCutSlRXT1IbMMXLOc4RYw__ztiQBE4';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentProduct = null; // curso actualmente abierto en la vista de detalle
+
+  // ---------------- CARRITO ----------------
+  function getCart(){
+    try { return JSON.parse(localStorage.getItem('gmax_cart') || '[]'); } catch(e){ return []; }
+  }
+  function saveCart(cart){
+    localStorage.setItem('gmax_cart', JSON.stringify(cart));
+    updateCartBadge();
+  }
+  function updateCartBadge(){
+    const cart = getCart();
+    const badge = document.getElementById('cartBadge');
+    if (cart.length > 0){ badge.style.display='flex'; badge.textContent = cart.length; }
+    else { badge.style.display='none'; }
+  }
+  window.addToCart = function(type, id, title, priceCents){
+    const cart = getCart();
+    if (cart.find(i => i.type===type && i.id===id)){
+      alert('Ese producto ya está en tu carrito.');
+      return;
+    }
+    cart.push({ type, id, title, price_cents: priceCents });
+    saveCart(cart);
+    openCart();
+  };
+  window.removeFromCart = function(type, id){
+    saveCart(getCart().filter(i => !(i.type===type && i.id===id)));
+    renderCart();
+  };
+  window.openCart = function(){
+    renderCart();
+    document.getElementById('cartOverlay').classList.add('open');
+  };
+  window.closeCart = function(){
+    document.getElementById('cartOverlay').classList.remove('open');
+  };
+  function renderCart(){
+    const cart = getCart();
+    const container = document.getElementById('cartItems');
+    if (cart.length === 0){
+      container.innerHTML = '<div class="cart-empty-msg">Tu carrito está vacío.<br>Explora el catálogo para agregar cursos o materiales.</div>';
+    } else {
+      container.innerHTML = cart.map(i => `
+        <div class="cart-item">
+          <div><div class="ci-title">${i.title}</div><div class="ci-price">$${(i.price_cents/100).toFixed(0)} USD</div></div>
+          <button class="ci-remove" onclick="removeFromCart('${i.type}','${i.id}')">Quitar</button>
+        </div>`).join('');
+    }
+    const total = cart.reduce((sum,i)=>sum+i.price_cents,0);
+    document.getElementById('cartTotal').textContent = '$' + (total/100).toFixed(0) + ' USD';
+  }
+  window.checkoutCart = function(){
+    if (getCart().length === 0){ alert('Tu carrito está vacío.'); return; }
+    alert('¡Ya casi! Los pagos con tarjeta se activan en cuanto terminemos de conectar Stripe. Por ahora tu carrito se guarda solo — vuelve pronto para completar tu compra.');
+  };
+
+  // ---------------- CATÁLOGO: CURSOS ----------------
+  async function loadCourses(){
+    const { data: courses, error } = await sb.from('courses')
+      .select('*')
+      .in('status', ['published','coming_soon'])
+      .order('created_at', { ascending: true });
+
+    const grid = document.getElementById('coursesGrid');
+    if (error || !courses || courses.length === 0){
+      grid.innerHTML = '<div class="empty-catalog">Todavía no hay cursos publicados. ¡Vuelve pronto!</div>';
+      return;
+    }
+
+    const cardsHtml = await Promise.all(courses.map(async c => {
+      if (c.status === 'coming_soon'){
+        return `
+          <div class="coming-soon-card">
+            <div>
+              <span class="cs-badge">Próximamente</span>
+              <h3>${c.title}</h3>
+              <p>${c.short_description || 'Estamos preparando este curso, muy pronto disponible.'}</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="toggleWaitlistForm('${c.id}')">Notificarme al lanzar</button>
+            <div class="waitlist-form" id="wf-${c.id}">
+              <input type="text" id="wfName-${c.id}" placeholder="Tu nombre">
+              <input type="email" id="wfEmail-${c.id}" placeholder="Tu correo electrónico">
+              <button type="button" class="btn btn-gold btn-sm" onclick="submitWaitlist('${c.id}')">Avísenme</button>
+              <div class="waitlist-msg" id="wfMsg-${c.id}"></div>
+            </div>
+          </div>`;
+      }
+      const { count: chCount } = await sb.from('chapters').select('*', {count:'exact', head:true}).eq('course_id', c.id);
+      const { data: lessonRows } = await sb.from('lessons').select('id, chapters!inner(course_id)').eq('chapters.course_id', c.id);
+      const lessonCount = lessonRows ? lessonRows.length : 0;
+
+      const mediaHtml = c.thumbnail_url
+        ? `<img src="${c.thumbnail_url}" alt="${c.title}" style="width:100%;height:100%;object-fit:cover;">`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="1.6"><path d="M12 2 3 7l9 5 9-5-9-5Z" stroke-linejoin="round"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>`;
+
+      return `
+        <div class="course-card">
+          <div class="course-media" style="${c.thumbnail_url?'background:none;':''}">
+            ${mediaHtml}
+            <span class="course-badge">Curso disponible</span>
+          </div>
+          <div class="course-body">
+            <h3><a href="#" onclick="openProduct(event,'${c.id}')" style="color:inherit">${c.title}</a></h3>
+            <p>${c.short_description || ''}</p>
+            <div class="course-meta"><span><b>${chCount ?? 0}</b> capítulos</span><span><b>${lessonCount}</b> lecciones</span></div>
+            <div class="course-foot">
+              <div class="price">$${(c.price_cents/100).toFixed(0)}<span>&nbsp;USD</span></div>
+              <div style="display:flex;gap:10px;">
+                <a href="#" onclick="openProduct(event,'${c.id}')" class="btn btn-ghost btn-sm">Ver detalles</a>
+                <a href="#" onclick="event.preventDefault();addToCart('course','${c.id}','${c.title.replace(/'/g,"\\'")}',${c.price_cents})" class="btn btn-primary btn-sm">Agregar al carrito</a>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }));
+
+    grid.innerHTML = cardsHtml.join('');
+  }
+
+  window.toggleWaitlistForm = function(courseId){
+    document.getElementById('wf-' + courseId).classList.toggle('open');
+  };
+  window.submitWaitlist = async function(courseId){
+    const name = document.getElementById('wfName-' + courseId).value.trim();
+    const email = document.getElementById('wfEmail-' + courseId).value.trim();
+    const msgEl = document.getElementById('wfMsg-' + courseId);
+    if (!email){ msgEl.textContent = 'Escribe tu correo.'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
+    const { error } = await sb.from('leads').insert({ full_name: name, email, source: 'course_waitlist', course_id: courseId });
+    if (error){ msgEl.textContent = 'Hubo un error, intenta de nuevo.'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
+    msgEl.textContent = '¡Listo! Te avisamos apenas esté disponible.';
+    msgEl.className = 'waitlist-msg ok';
+    msgEl.style.display = 'block';
+  };
+
+  // ---------------- RECURSOS GRATUITOS ----------------
+  async function loadFreeResources(){
+    const { data: resources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at',{ascending:false});
+    const grid = document.getElementById('freeResourcesGrid');
+    if (!resources || resources.length === 0){
+      grid.innerHTML = '<div class="empty-catalog" style="color:#C6D2E8;">Todavía no hay recursos gratuitos publicados.</div>';
+      return;
+    }
+    grid.innerHTML = resources.map(r => `
+      <div class="free-card">
+        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+        <h3>${r.title}</h3>
+        <p>${r.description || ''}</p>
+        <a href="${r.file_url}" target="_blank">Descargar gratis →</a>
+      </div>`).join('');
+  }
+
+  // ---------------- MATERIALES DE PAGO ----------------
+  async function loadMaterials(){
+    const { data: materials } = await sb.from('materials').select('*').eq('status','published').order('created_at',{ascending:false});
+    const grid = document.getElementById('materialsGrid');
+    if (!materials || materials.length === 0){
+      grid.innerHTML = '<div class="empty-catalog">Todavía no hay materiales de pago publicados.</div>';
+      return;
+    }
+    grid.innerHTML = materials.map(m => `
+      <div class="free-card">
+        <div class="fi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F2447" stroke-width="2"><path d="M9 12h6M9 16h6M9 8h6M5 21h14a2 2 0 0 0 2-2V7l-5-5H5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2Z"/></svg></div>
+        <h3>${m.title}</h3>
+        <p>${m.description || ''}</p>
+        <div class="mat-price">$${(m.price_cents/100).toFixed(0)} USD</div>
+        <a href="#" class="btn btn-gold" onclick="event.preventDefault();addToCart('material','${m.id}','${m.title.replace(/'/g,"\\'")}',${m.price_cents})">Agregar al carrito</a>
+      </div>`).join('');
+  }
+
+  // ---------------- DETALLE DE PRODUCTO (curso) ----------------
+  window.openProduct = async function(e, courseId){
+    e.preventDefault();
+    const { data: course } = await sb.from('courses').select('*').eq('id', courseId).single();
+    if (!course) return;
+    currentProduct = course;
+
+    document.getElementById('pTitle').textContent = course.title;
+    document.getElementById('pLead').textContent = course.short_description || '';
+    document.getElementById('pFullDesc').textContent = course.description || course.short_description || '';
+    document.getElementById('pPrice').innerHTML = '$' + (course.price_cents/100).toFixed(0) + '<span>&nbsp;USD</span>';
+    document.getElementById('pAccess').textContent = Math.round((course.access_days||90)/30) + ' meses';
+
+    const { data: chapters } = await sb.from('chapters').select('*, lessons(id)').eq('course_id', courseId).order('position');
+    document.getElementById('pChapters').textContent = chapters ? chapters.length : 0;
+    const totalLessons = chapters ? chapters.reduce((sum,ch)=>sum+(ch.lessons?ch.lessons.length:0),0) : 0;
+    document.getElementById('pLessons').textContent = totalLessons;
+
+    const curriculumEl = document.getElementById('pCurriculum');
+    if (chapters && chapters.length){
+      curriculumEl.innerHTML = chapters.map((ch,i) => `
+        <div class="curriculum-item"><div class="curriculum-head"><span class="name">${i+1}. ${ch.title}</span><span class="count">${ch.lessons?ch.lessons.length:0} lecciones</span></div></div>
+      `).join('');
+    } else {
+      curriculumEl.innerHTML = '<p class="p-note">Temario disponible próximamente.</p>';
+    }
+
+    document.getElementById('pAddCartBtn').onclick = () => addToCart('course', course.id, course.title, course.price_cents);
+
+    document.getElementById('productPage').classList.add('open');
+    document.getElementById('productPage').scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeProduct = function(){
+    document.getElementById('productPage').classList.remove('open');
+    document.body.style.overflow = 'auto';
+  };
+
+  // ---------------- INIT ----------------
+  updateCartBadge();
+  loadCourses();
+  loadFreeResources();
+  loadMaterials();
 </script>
 
 </body>
