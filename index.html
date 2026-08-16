@@ -530,8 +530,8 @@
       <div id="lgSuccess" style="display:none;text-align:center;padding:10px 0;">
         <div style="font-size:32px;margin-bottom:10px;">✓</div>
         <h3 style="font-size:16px;color:var(--navy);margin-bottom:8px;">¡Listo!</h3>
-        <p style="font-size:13.5px;color:var(--slate);margin-bottom:18px;">Tu descargable ya está disponible.</p>
-        <a id="lgDownloadLink" href="#" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;">Descargar ahora →</a>
+        <p style="font-size:13.5px;color:var(--slate);margin-bottom:6px;">Te acabamos de enviar el link de descarga a tu correo.</p>
+        <p style="font-size:12px;color:var(--slate);">Si no lo ves en unos minutos, revisa la carpeta de spam o promociones.</p>
       </div>
     </div>
   </div>
@@ -773,13 +773,14 @@
   window.closeLeadGate = function(){
     document.getElementById('leadGateOverlay').classList.remove('open');
   };
+  const SEND_RESOURCE_EMAIL_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/swift-endpoint';
+
   window.submitLeadGate = async function(){
     const firstName = document.getElementById('lgFirstName').value.trim();
     const lastName = document.getElementById('lgLastName').value.trim();
     const email = document.getElementById('lgEmail').value.trim();
     const phone = document.getElementById('lgPhone').value.trim();
     const resourceId = document.getElementById('lgResourceId').value;
-    const fileUrl = document.getElementById('lgFileUrl').value;
     const msgEl = document.getElementById('lgMsg');
 
     if (!firstName || !lastName || !email || !phone){
@@ -790,23 +791,47 @@
 
     const btn = document.getElementById('lgSubmitBtn');
     btn.disabled = true; btn.textContent = 'Enviando...';
+    msgEl.style.display = 'none';
 
     const { error } = await sb.from('leads').insert({
       full_name: firstName + ' ' + lastName, email, phone,
       source: 'free_resource', source_detail: resourceId
     });
 
-    btn.disabled = false; btn.textContent = 'Obtener descargable';
-
     if (error){
+      btn.disabled = false; btn.textContent = 'Obtener descargable';
       msgEl.textContent = 'Hubo un error, intenta de nuevo.';
       msgEl.style.display = 'block';
       return;
     }
 
-    document.getElementById('lgForm').style.display = 'none';
-    document.getElementById('lgSuccess').style.display = 'block';
-    document.getElementById('lgDownloadLink').href = fileUrl;
+    try {
+      const res = await fetch(SEND_RESOURCE_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'apikey': SUPABASE_KEY
+        },
+        body: JSON.stringify({
+          resource_id: resourceId,
+          name: firstName,
+          last_name: lastName,
+          email,
+          phone
+        })
+      });
+
+      if (!res.ok) throw new Error('email send failed');
+
+      btn.disabled = false; btn.textContent = 'Obtener descargable';
+      document.getElementById('lgForm').style.display = 'none';
+      document.getElementById('lgSuccess').style.display = 'block';
+    } catch (err){
+      btn.disabled = false; btn.textContent = 'Obtener descargable';
+      msgEl.textContent = 'No pudimos enviar el correo, intenta de nuevo en un momento.';
+      msgEl.style.display = 'block';
+    }
   };
 
   // ---------------- MATERIALES DE PAGO ----------------
