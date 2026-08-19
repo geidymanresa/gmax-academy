@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Cuenta — GMAX Insurance Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0F2447; --blue:#1E4C9A; --blue-light:#2E5FB8;
+    --gold:#F0B429; --gold-dark:#D69A1C;
+    --bg:#F5F7FB; --ink:#12294F; --slate:#5A6478; --line:#E1E5EF; --white:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);}
+  h1,h2,h3{font-family:'Sora',sans-serif;}
+  a{text-decoration:none;color:inherit;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+
+  #gate{position:fixed;inset:0;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:999;font-family:'Sora',sans-serif;}
+  #gate.hidden{display:none;}
+  .spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  header{background:var(--navy);color:#fff;padding:22px 0;}
+  .header-row{display:flex;justify-content:space-between;align-items:center;}
+  .logo{font-family:'Sora',sans-serif;font-weight:800;font-size:18px;}
+  .logo span{color:var(--gold);font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:block;font-weight:700;margin-top:2px;}
+  .header-actions{display:flex;align-items:center;gap:14px;}
+  .who-name{font-size:13.5px;color:#C6D2E8;}
+  .logout-link{font-size:13px;color:#B7C2DA;font-weight:600;background:rgba(255,255,255,.08);padding:9px 16px;border-radius:8px;border:none;cursor:pointer;}
+
+  .hero-greet{padding:36px 0 8px;}
+  .hero-greet h1{font-size:26px;font-weight:800;color:var(--navy);}
+  .hero-greet p{color:var(--slate);font-size:14.5px;margin-top:4px;}
+
+  section{padding:26px 0;}
+  .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .sec-head h2{font-size:17px;font-weight:800;color:var(--navy);}
+  .sec-head a{font-size:13px;font-weight:700;color:var(--blue);}
+
+  .course-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:14px;display:flex;gap:20px;align-items:center;}
+  .course-card .cc-icon{width:52px;height:52px;flex:none;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--navy));display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .course-card .cc-body{flex:1;}
+  .course-card h3{font-size:15.5px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+  .progress-bar{height:7px;background:var(--line);border-radius:100px;overflow:hidden;margin-bottom:5px;}
+  .progress-fill{height:100%;background:var(--gold);border-radius:100px;}
+  .cc-meta{font-size:12px;color:var(--slate);}
+  .btn{font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:11px 20px;border-radius:9px;border:none;white-space:nowrap;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-gold{background:var(--gold);color:var(--navy);}
+
+  .empty-box{background:#fff;border:1.5px dashed var(--line);border-radius:16px;padding:36px;text-align:center;color:var(--slate);font-size:14px;}
+  .empty-box a{color:var(--blue);font-weight:700;}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .resource-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;}
+  .resource-card h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;}
+  .resource-card p{font-size:12.5px;color:var(--slate);margin-bottom:14px;}
+
+  .catalog-banner{background:linear-gradient(120deg,var(--blue),var(--navy));border-radius:18px;padding:32px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
+  .catalog-banner h2{font-size:19px;font-weight:800;margin-bottom:6px;}
+  .catalog-banner p{color:#C6D2E8;font-size:13.5px;}
+
+  @media(max-width:760px){
+    .grid3{grid-template-columns:1fr;}
+    .course-card{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="spinner"></div>
+  <div>Cargando tu cuenta...</div>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <div class="wrap header-row">
+      <div class="logo">GMAX <span>Insurance Academy</span></div>
+      <div class="header-actions">
+        <span class="who-name" id="whoName"></span>
+        <button class="logout-link" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="hero-greet">
+      <h1 id="greetTitle">Hola 👋</h1>
+      <p>Aquí puedes retomar tus cursos, descargar tus materiales y ver qué más ofrece la academia.</p>
+    </div>
+
+    <section>
+      <div class="sec-head"><h2>Mis Cursos</h2></div>
+      <div id="myCourses"><div class="empty-box">Cargando tus cursos...</div></div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Tus Materiales</h2></div>
+      <div class="grid3" id="myMaterials"><div class="empty-box">Cargando tus materiales...</div></div>
+    </section>
+
+    <section>
+      <div class="catalog-banner">
+        <div>
+          <h2>¿Quieres seguir aprendiendo?</h2>
+          <p>Explora el catálogo completo de cursos y materiales de la academia.</p>
+        </div>
+        <a href="index.html#catalogo" class="btn btn-gold">Ver catálogo →</a>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>Recursos Gratuitos</h2>
+        <a href="index.html#recursos">Ver todos</a>
+      </div>
+      <div class="grid3" id="freeResources"><div class="empty-box">Cargando recursos...</div></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dCutSlRXT1IbMMXLOc4RYw__ztiQBE4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ window.location.href = 'login.html'; return; }
+  currentUser = session.user;
+
+  const { data: profile } = await sb.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
+  const name = (profile && profile.full_name) ? profile.full_name.split(' ')[0] : 'de nuevo';
+  document.getElementById('greetTitle').textContent = 'Hola, ' + name + ' 👋';
+  document.getElementById('whoName').textContent = (profile && profile.full_name) || currentUser.email;
+
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+
+  await loadMyCourses();
+  await loadMyMaterials();
+  await loadFreeResources();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+});
+
+async function loadMyCourses(){
+  const { data: enrollments } = await sb
+    .from('enrollments')
+    .select('*, courses(*)')
+    .eq('user_id', currentUser.id)
+    .eq('status', 'active')
+    .order('starts_at', {ascending:false});
+
+  const container = document.getElementById('myCourses');
+  if (!enrollments || enrollments.length === 0){
+    container.innerHTML = `<div class="empty-box">Todavía no tienes ningún curso. <a href="index.html#catalogo">Explora el catálogo →</a></div>`;
+    return;
+  }
+
+  const cards = await Promise.all(enrollments.map(async e => {
+    const expired = new Date(e.expires_at) < new Date();
+    const { count: totalLessons } = await sb.from('lessons').select('*, chapters!inner(course_id)', {count:'exact', head:true}).eq('chapters.course_id', e.course_id);
+    const { data: lessonIds } = await sb.from('lessons').select('id, chapters!inner(course_id)').eq('chapters.course_id', e.course_id);
+    let doneCount = 0;
+    if (lessonIds && lessonIds.length){
+      const ids = lessonIds.map(l=>l.id);
+      const { count } = await sb.from('lesson_progress').select('*', {count:'exact', head:true}).eq('user_id', currentUser.id).eq('completed', true).in('lesson_id', ids);
+      doneCount = count || 0;
+    }
+    const pct = (lessonIds && lessonIds.length) ? Math.round((doneCount/lessonIds.length)*100) : 0;
+    const daysLeft = Math.max(0, Math.ceil((new Date(e.expires_at) - new Date()) / (1000*60*60*24)));
+
+    return `
+      <div class="course-card">
+        <div class="cc-icon">🎓</div>
+        <div class="cc-body">
+          <h3>${e.courses.title}</h3>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div>
+          <div class="cc-meta">${pct}% completado ${expired ? '· <span style="color:#D64545;font-weight:700;">Acceso vencido</span>' : '· ' + daysLeft + ' días de acceso restantes'}</div>
+        </div>
+        ${expired
+          ? `<a href="index.html#catalogo" class="btn btn-primary">Renovar acceso</a>`
+          : `<a href="dashboard.html?course=${e.course_id}" class="btn btn-primary">Continuar →</a>`}
+      </div>`;
+  }));
+
+  container.innerHTML = cards.join('');
+}
+
+async function loadMyMaterials(){
+  const { data: purchases } = await sb
+    .from('material_purchases')
+    .select('*, materials(*)')
+    .eq('user_id', currentUser.id);
+
+  const container = document.getElementById('myMaterials');
+  if (!purchases || purchases.length === 0){
+    container.innerHTML = `<div class="empty-box" style="grid-column:1/-1;">Todavía no tienes ningún material comprado.</div>`;
+    return;
+  }
+
+  container.innerHTML = purchases.map(p => `
+    <div class="resource-card">
+      <h4>${p.materials ? p.materials.title : 'Material'}</h4>
+      <p>${(p.materials && p.materials.description) || ''}</p>
+      ${p.materials && p.materials.file_url
+        ? `<a href="${p.materials.file_url}" target="_blank" class="btn btn-gold">Descargar</a>`
+        : `<span style="font-size:12.5px;color:var(--slate);">Archivo no disponible todavía.</span>`}
+    </div>
+  `).join('');
+}
+
+async function loadFreeResources(){
+  const { data: resources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at', {ascending:false}).limit(3);
+  const container = document.getElementById('freeResources');
+  if (!resources || resources.length === 0){
+    container.innerHTML = `<div class="empty-box" style="grid-column:1/-1;">Todavía no hay recursos gratuitos publicados.</div>`;
+    return;
+  }
+  container.innerHTML = resources.map(r => `
+    <div class="resource-card">
+      <h4>${r.title}</h4>
+      <p>${r.description || ''}</p>
+      <a href="${r.file_url}" target="_blank" class="btn btn-gold">Descargar</a>
+    </div>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>
