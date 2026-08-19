@@ -84,7 +84,7 @@
     <div class="logo">GMAX <span>Insurance Academy</span></div>
   </div>
 
-<div class="panel">
+<div class="panel" id="loginPanel">
   <h2>Iniciar sesión</h2>
   <p class="sub">Entra con el correo que usaste al comprar tu curso.</p>
 
@@ -101,8 +101,8 @@
   </form>
 
   <div class="foot-links">
-    <a href="#" id="forgotLink">¿Olvidaste tu contraseña?</a>
-    <a href="index.html#catalogo">Aún no tengo cuenta</a>
+    <a href="recuperar-clave.html">¿Olvidaste tu contraseña?</a>
+    <a href="recuperar-clave.html">Aún no tengo cuenta</a>
   </div>
   </div>
 </div>
@@ -125,8 +125,19 @@
   // Genera y guarda un token de sesión único para este dispositivo,
   // y lo registra en la base de datos (esto "desconecta" cualquier otro dispositivo
   // que haya iniciado sesión antes con la misma cuenta).
+  // Generador de ID único que funciona incluso sin HTTPS (crypto.randomUUID requiere contexto seguro)
+  function generateId(){
+    if (window.crypto && window.crypto.randomUUID) {
+      try { return window.crypto.randomUUID(); } catch(e) {}
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8);
+      return v.toString(16);
+    });
+  }
+
   async function registerDeviceSession(userId){
-    const token = crypto.randomUUID();
+    const token = generateId();
     const deviceLabel = navigator.userAgent.slice(0, 120);
 
     await sb.from('active_sessions').upsert({
@@ -185,21 +196,6 @@
         window.location.href = 'dashboard.html';
       }
     }, 700);
-  });
-
-  document.getElementById('forgotLink').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email').value.trim();
-    if (!email) {
-      showMsg('Escribe tu correo arriba primero, y luego dale clic a este link de nuevo.', 'error');
-      return;
-    }
-    const { error } = await sb.auth.resetPasswordForEmail(email);
-    if (error) {
-      showMsg('No se pudo enviar el correo de recuperación.', 'error');
-    } else {
-      showMsg('Te enviamos un correo para restablecer tu contraseña.', 'ok');
-    }
   });
 </script>
 
