@@ -170,6 +170,7 @@
     <div class="navitem" data-view="recursos">📄 &nbsp;Recursos Gratis</div>
     <div class="navitem" data-view="materiales">💰 &nbsp;Materiales de Pago</div>
     <div class="navitem" data-view="leads">👥 &nbsp;Leads</div>
+    <div class="navitem" data-view="soporte">🆘 &nbsp;Soporte</div>
     <div class="sidebar-foot">
       <div class="who"><b id="whoName">—</b><span id="whoRole">—</span></div>
       <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
@@ -186,9 +187,35 @@
       <div class="stats-grid">
         <div class="stat-card"><div class="label">Cursos publicados</div><div class="value" id="statCourses">—</div></div>
         <div class="stat-card"><div class="label">Inscripciones activas</div><div class="value" id="statEnrollments">—</div></div>
+        <div class="stat-card"><div class="label">Usuarios registrados</div><div class="value" id="statUsers">—</div></div>
         <div class="stat-card"><div class="label">Leads totales</div><div class="value" id="statLeads">—</div></div>
+        <div class="stat-card"><div class="label">Descargas de gratuitos</div><div class="value" id="statFreeDownloads">—</div></div>
+        <div class="stat-card"><div class="label">Materiales de pago vendidos</div><div class="value" id="statMaterialSales">—</div></div>
         <div class="stat-card"><div class="label">Cupones activos</div><div class="value" id="statCoupons">—</div></div>
+        <div class="stat-card"><div class="label">Mensajes de soporte abiertos</div><div class="value" id="statSupportOpen">—</div></div>
+        <div class="stat-card" style="border-color:var(--gold);"><div class="label">Ingresos totales</div><div class="value" id="statRevenueTotal">—</div></div>
       </div>
+
+      <div class="card">
+        <div class="card-head"><h3>💰 Contabilidad — Ingresos por tipo</h3></div>
+        <table>
+          <thead><tr><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+          <tbody>
+            <tr><td>Ingresos por cursos</td><td style="text-align:right;" id="accRevenueCourses">—</td></tr>
+            <tr><td>Ingresos por materiales de pago</td><td style="text-align:right;" id="accRevenueMaterials">—</td></tr>
+            <tr><td><b>Total vendido</b></td><td style="text-align:right;"><b id="accRevenueTotal">—</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>🎓 Finalización de cursos</h3></div>
+        <table>
+          <thead><tr><th>Curso</th><th>Inscritos</th><th>Terminaron</th><th>No han terminado</th><th>% Finalización</th></tr></thead>
+          <tbody id="completionBody"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+
       <div class="card">
         <div class="card-head"><h3>Leads más recientes</h3></div>
         <table>
@@ -263,6 +290,19 @@
         <table>
           <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Ciudad/Estado</th><th>Origen</th><th>Fecha</th></tr></thead>
           <tbody id="leadsBody"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SOPORTE -->
+    <section id="view-soporte" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Soporte</h1><p>Mensajes de estudiantes con dudas o problemas técnicos, enviados desde su curso.</p></div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Estudiante</th><th>Asunto</th><th>Mensaje</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+          <tbody id="supportBody"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -464,6 +504,29 @@
   </div>
 </div>
 
+<!-- MODAL: SOPORTE -->
+<div class="modal-overlay" id="supportModal">
+  <div class="modal" style="max-width:600px;">
+    <h2>Mensaje de soporte</h2>
+    <div class="msg-inline" id="supportMsg"></div>
+    <div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:12.5px;color:var(--slate);margin-bottom:6px;"><b id="supportFrom">—</b> · <span id="supportDate">—</span></div>
+      <div style="font-weight:700;margin-bottom:6px;" id="supportSubject">—</div>
+      <div style="font-size:13.5px;white-space:pre-wrap;" id="supportMessage">—</div>
+    </div>
+    <div id="supportThread"></div>
+    <div class="form-row">
+      <label>Tu respuesta</label>
+      <textarea id="supportReplyText" placeholder="Escribe tu respuesta..." style="min-height:100px;"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelSupportBtn">Cerrar</button>
+      <button class="btn btn-ghost" id="markClosedBtn">Marcar como cerrado</button>
+      <button class="btn btn-primary" id="sendSupportReplyBtn">Enviar respuesta</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -519,6 +582,7 @@ document.querySelectorAll('.navitem').forEach(item=>{
     if(view==='recursos') loadResources();
     if(view==='materiales') loadMaterials();
     if(view==='leads') loadLeads();
+    if(view==='soporte') loadSupport();
   });
 });
 
@@ -528,11 +592,36 @@ async function loadDashboard(){
   const { count: enrollCount } = await sb.from('enrollments').select('*', {count:'exact', head:true}).eq('status','active');
   const { count: leadCount } = await sb.from('leads').select('*', {count:'exact', head:true});
   const { count: couponCount } = await sb.from('coupons').select('*', {count:'exact', head:true}).eq('active', true);
+  const { count: userCount } = await sb.from('profiles').select('*', {count:'exact', head:true});
+  const { count: freeDownloadCount } = await sb.from('leads').select('*', {count:'exact', head:true}).eq('source','free_resource');
+  const { count: materialSalesCount } = await sb.from('material_purchases').select('*', {count:'exact', head:true});
+  const { count: supportOpenCount } = await sb.from('support_tickets').select('*', {count:'exact', head:true}).eq('status','abierto');
 
   document.getElementById('statCourses').textContent = courseCount ?? 0;
   document.getElementById('statEnrollments').textContent = enrollCount ?? 0;
+  document.getElementById('statUsers').textContent = userCount ?? 0;
   document.getElementById('statLeads').textContent = leadCount ?? 0;
+  document.getElementById('statFreeDownloads').textContent = freeDownloadCount ?? 0;
+  document.getElementById('statMaterialSales').textContent = materialSalesCount ?? 0;
   document.getElementById('statCoupons').textContent = couponCount ?? 0;
+  document.getElementById('statSupportOpen').textContent = supportOpenCount ?? 0;
+
+  // ---- Contabilidad: ingresos por tipo (a partir de order_items, la fuente
+  // real de lo vendido — así una orden mixta de curso + material reparte
+  // correctamente el ingreso entre las dos categorías) ----
+  const { data: orderItems } = await sb.from('order_items').select('item_type, price_cents');
+  let revCourses = 0, revMaterials = 0;
+  (orderItems || []).forEach(oi => {
+    if (oi.item_type === 'course') revCourses += (oi.price_cents || 0);
+    else revMaterials += (oi.price_cents || 0);
+  });
+  const revTotal = revCourses + revMaterials;
+  document.getElementById('statRevenueTotal').textContent = formatMoney(revTotal);
+  document.getElementById('accRevenueCourses').textContent = formatMoney(revCourses);
+  document.getElementById('accRevenueMaterials').textContent = formatMoney(revMaterials);
+  document.getElementById('accRevenueTotal').textContent = formatMoney(revTotal);
+
+  await loadCourseCompletion();
 
   const { data: recentLeads } = await sb.from('leads').select('*').order('created_at', {ascending:false}).limit(6);
   const body = document.getElementById('recentLeadsBody');
@@ -543,6 +632,48 @@ async function loadDashboard(){
       <tr><td>${l.full_name || '—'}</td><td>${l.email}</td><td>${sourceLabel(l.source)}</td><td>${formatDate(l.created_at)}</td></tr>
     `).join('');
   }
+}
+
+function formatMoney(cents){
+  return '$' + ((cents||0)/100).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ---- Finalización de cursos: por cada curso publicado, cuenta cuántos
+// estudiantes inscritos activos han completado el 100% de las lecciones,
+// comparando contra lesson_progress. ----
+async function loadCourseCompletion(){
+  const { data: courses } = await sb.from('courses').select('id, title').eq('status', 'published');
+  const body = document.getElementById('completionBody');
+  if (!courses || courses.length === 0){
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">No hay cursos publicados todavía.</td></tr>';
+    return;
+  }
+
+  const rows = await Promise.all(courses.map(async c => {
+    const { data: chapters } = await sb.from('chapters').select('id, lessons(id)').eq('course_id', c.id);
+    const lessonIds = (chapters || []).flatMap(ch => (ch.lessons || []).map(l => l.id));
+    const totalLessons = lessonIds.length;
+
+    const { data: enrollments } = await sb.from('enrollments').select('user_id').eq('course_id', c.id).eq('status', 'active');
+    const enrolledCount = (enrollments || []).length;
+
+    let completedCount = 0;
+    if (totalLessons > 0 && enrolledCount > 0){
+      const { data: progressRows } = await sb.from('lesson_progress').select('user_id, lesson_id').eq('completed', true).in('lesson_id', lessonIds);
+      const countByUser = {};
+      (progressRows || []).forEach(p => { countByUser[p.user_id] = (countByUser[p.user_id] || 0) + 1; });
+      enrollments.forEach(e => { if ((countByUser[e.user_id] || 0) >= totalLessons) completedCount++; });
+    }
+    const pct = enrolledCount > 0 ? Math.round((completedCount / enrolledCount) * 100) : 0;
+    return `<tr>
+      <td><b>${c.title}</b></td>
+      <td>${enrolledCount}</td>
+      <td>${completedCount}</td>
+      <td>${enrolledCount - completedCount}</td>
+      <td>${pct}%</td>
+    </tr>`;
+  }));
+  body.innerHTML = rows.join('');
 }
 
 function sourceLabel(s){
@@ -1508,6 +1639,95 @@ async function loadLeads(){
     </tr>
   `).join('');
 }
+
+// ---------- SOPORTE ----------
+async function loadSupport(){
+  const { data: tickets, error } = await sb.from('support_tickets').select('*, profiles(full_name, email)').order('created_at', {ascending:false});
+  const body = document.getElementById('supportBody');
+  if (error || !tickets || tickets.length === 0){
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No hay mensajes de soporte todavía.</td></tr>';
+    return;
+  }
+  body.innerHTML = tickets.map(t => `
+    <tr>
+      <td><b>${t.profiles?.full_name || '—'}</b><br><span style="color:var(--slate);font-size:12px;">${t.profiles?.email || ''}</span></td>
+      <td>${t.subject || '—'}</td>
+      <td style="max-width:260px;">${escapeHtml((t.message||'').slice(0,80))}${t.message && t.message.length>80 ? '…' : ''}</td>
+      <td><span class="badge badge-${t.status==='abierto'?'draft':t.status==='respondido'?'published':'archived'}">${supportStatusLabel(t.status)}</span></td>
+      <td>${formatDate(t.created_at)}</td>
+      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="openSupportTicket('${t.id}')">Ver / responder</button></td>
+    </tr>
+  `).join('');
+}
+function supportStatusLabel(s){ return { abierto:'Abierto', respondido:'Respondido', cerrado:'Cerrado' }[s] || s; }
+
+let currentTicketId = null;
+const supportModal = document.getElementById('supportModal');
+
+window.openSupportTicket = async function(id){
+  currentTicketId = id;
+  const { data: t } = await sb.from('support_tickets').select('*, profiles(full_name, email)').eq('id', id).single();
+  if (!t){ toast('No se pudo cargar el mensaje', true); return; }
+
+  document.getElementById('supportFrom').textContent = (t.profiles?.full_name || 'Estudiante') + ' (' + (t.profiles?.email || '—') + ')';
+  document.getElementById('supportDate').textContent = formatDate(t.created_at);
+  document.getElementById('supportSubject').textContent = t.subject || 'Sin asunto';
+  document.getElementById('supportMessage').textContent = t.message;
+
+  const { data: replies } = await sb.from('support_replies').select('*').eq('ticket_id', id).order('created_at', {ascending:true});
+  const threadEl = document.getElementById('supportThread');
+  if (replies && replies.length){
+    threadEl.innerHTML = replies.map(r => `
+      <div style="background:${r.sender_role==='admin'?'#EAF0FB':'var(--bg)'};border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+        <div style="font-size:11.5px;color:var(--slate);font-weight:700;margin-bottom:4px;">${r.sender_role==='admin'?'Tú (administradora)':'Estudiante'} · ${formatDate(r.created_at)}</div>
+        <div style="font-size:13.5px;white-space:pre-wrap;">${escapeHtml(r.message)}</div>
+      </div>
+    `).join('');
+  } else {
+    threadEl.innerHTML = '';
+  }
+
+  document.getElementById('supportReplyText').value = '';
+  document.getElementById('supportMsg').className = 'msg-inline';
+  supportModal.classList.add('open');
+};
+
+document.getElementById('cancelSupportBtn').addEventListener('click', ()=> supportModal.classList.remove('open'));
+
+document.getElementById('markClosedBtn').addEventListener('click', async ()=>{
+  if (!currentTicketId) return;
+  await sb.from('support_tickets').update({ status: 'cerrado', updated_at: new Date().toISOString() }).eq('id', currentTicketId);
+  toast('Ticket marcado como cerrado ✓');
+  supportModal.classList.remove('open');
+  loadSupport();
+  loadDashboard();
+});
+
+document.getElementById('sendSupportReplyBtn').addEventListener('click', async ()=>{
+  const text = document.getElementById('supportReplyText').value.trim();
+  const msgEl = document.getElementById('supportMsg');
+  if (!text){ msgEl.textContent = 'Escribe una respuesta antes de enviar.'; msgEl.className = 'msg-inline error show'; return; }
+
+  const { error: replyError } = await sb.from('support_replies').insert({
+    ticket_id: currentTicketId, sender_role: 'admin', sender_id: currentUser.id, message: text
+  });
+  if (replyError){ msgEl.textContent = 'Error: ' + replyError.message; msgEl.className = 'msg-inline error show'; return; }
+
+  await sb.from('support_tickets').update({ status: 'respondido', updated_at: new Date().toISOString() }).eq('id', currentTicketId);
+
+  // Notifica al estudiante por correo de que ya tiene respuesta (si falla el
+  // correo, la respuesta ya quedó guardada y visible en su plataforma igual).
+  fetch('https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/support-notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+    body: JSON.stringify({ type: 'admin_reply', ticketId: currentTicketId })
+  }).catch(()=>{});
+
+  toast('Respuesta enviada ✓');
+  supportModal.classList.remove('open');
+  loadSupport();
+  loadDashboard();
+});
 </script>
 </body>
 </html>
