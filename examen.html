@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exámenes — GMAX Insurance Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0F2447; --blue:#1E4C9A; --blue-light:#2E5FB8;
+    --gold:#F0B429; --gold-dark:#D69A1C;
+    --bg:#F5F7FB; --ink:#12294F; --slate:#5A6478; --line:#E1E5EF; --white:#FFFFFF;
+    --success:#2A7A3B; --danger:#D64545;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);}
+  h1,h2,h3{font-family:'Sora',sans-serif;}
+  a{text-decoration:none;color:inherit;}
+  button{font-family:'Inter',sans-serif;cursor:pointer;}
+
+  #gate{position:fixed;inset:0;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:999;font-family:'Sora',sans-serif;text-align:center;padding:20px;}
+  #gate.hidden{display:none;}
+  .spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .gate-btn{margin-top:10px;background:var(--gold);color:var(--navy);border:none;padding:12px 24px;border-radius:9px;font-weight:700;font-family:'Sora',sans-serif;}
+
+  #app{display:none;}
+  #app.ready{display:block;}
+
+  .topbar{background:#fff;border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:50;flex-wrap:wrap;}
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--slate);}
+  .back-link:hover{color:var(--blue);}
+  .topbar .title{font-family:'Sora',sans-serif;font-weight:800;font-size:15px;color:var(--navy);}
+  .timer{font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy);background:var(--bg);border:1.5px solid var(--line);padding:8px 16px;border-radius:9px;}
+  .timer.low{color:var(--danger);border-color:#F3C6C6;background:#FCE9E9;}
+
+  .wrap{max-width:820px;margin:0 auto;padding:36px 20px 80px;}
+
+  /* ---- HUB ---- */
+  .hub-head{margin-bottom:26px;}
+  .hub-head h1{font-size:24px;font-weight:800;color:var(--navy);margin-bottom:6px;}
+  .hub-head p{color:var(--slate);font-size:14px;}
+
+  .exam-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:14px;}
+  .exam-card h3{font-size:15.5px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+  .exam-card .meta{font-size:13px;color:var(--slate);margin-bottom:14px;}
+  .exam-card .best{display:inline-block;font-size:12px;font-weight:700;padding:4px 10px;border-radius:100px;margin-bottom:14px;}
+  .exam-card .best.pass{background:#E8F3EA;color:var(--success);}
+  .exam-card .best.fail{background:#FCE9E9;color:var(--danger);}
+  .btn{font-family:'Sora',sans-serif;font-weight:700;font-size:13.5px;padding:11px 20px;border-radius:9px;border:1.5px solid var(--line);background:#fff;color:var(--ink);display:inline-flex;align-items:center;gap:8px;}
+  .btn:hover{border-color:var(--blue);color:var(--blue);}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .btn.primary:hover{background:var(--blue-light);}
+  .btn.gold{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+  .btn.gold:hover{background:var(--gold-dark);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .final-card{background:linear-gradient(135deg,var(--navy),#173157);color:#fff;border-radius:16px;padding:28px 26px;margin-bottom:26px;}
+  .final-card h3{font-size:18px;margin-bottom:6px;}
+  .final-card .meta{color:#B9C6E3;font-size:13.5px;margin-bottom:18px;}
+  .mode-row{display:flex;gap:12px;flex-wrap:wrap;}
+  .mode-box{flex:1;min-width:220px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:12px;padding:16px;}
+  .mode-box h4{font-size:13.5px;font-weight:700;margin-bottom:6px;}
+  .mode-box p{font-size:12.5px;color:#C6D2E8;line-height:1.5;margin-bottom:12px;}
+
+  /* ---- TAKING EXAM ---- */
+  .progress-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .qcount{font-family:'Sora',sans-serif;font-weight:700;font-size:13.5px;color:var(--slate);}
+  .grid-toggle{font-size:12.5px;font-weight:600;color:var(--blue);cursor:pointer;}
+  .qgrid{display:none;flex-wrap:wrap;gap:6px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px;max-height:180px;overflow-y:auto;}
+  .qgrid.open{display:flex;}
+  .qgrid button{width:30px;height:30px;border-radius:7px;border:1.5px solid var(--line);background:#fff;font-size:11.5px;font-weight:700;color:var(--slate);}
+  .qgrid button.answered{background:#EAF0FB;border-color:var(--blue);color:var(--blue);}
+  .qgrid button.current{background:var(--navy);border-color:var(--navy);color:#fff;}
+
+  .qcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 26px 22px;}
+  .qtext{font-size:16px;font-weight:600;line-height:1.55;color:var(--navy);margin-bottom:20px;}
+  .opt{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border:1.5px solid var(--line);border-radius:11px;margin-bottom:10px;cursor:pointer;}
+  .opt:hover{border-color:var(--blue-light);}
+  .opt input{margin-top:3px;flex:none;}
+  .opt span{font-size:14px;line-height:1.5;}
+  .opt.locked{cursor:default;}
+  .opt.correct{border-color:var(--success);background:#E8F3EA;}
+  .opt.incorrect{border-color:var(--danger);background:#FCE9E9;}
+
+  .feedback{margin-top:16px;padding:16px 18px;border-radius:11px;font-size:13.5px;line-height:1.6;}
+  .feedback.ok{background:#E8F3EA;color:#1E5B2A;}
+  .feedback.bad{background:#FCE9E9;color:#9C2E2E;}
+  .feedback b{display:block;font-family:'Sora',sans-serif;font-size:14.5px;margin-bottom:6px;}
+
+  .qnav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px;flex-wrap:wrap;}
+  .qnav .right{display:flex;gap:10px;flex-wrap:wrap;}
+
+  /* ---- RESULTS ---- */
+  .result-hero{text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:40px 24px;margin-bottom:26px;}
+  .result-hero .big{font-family:'Sora',sans-serif;font-weight:800;font-size:46px;margin-bottom:8px;}
+  .result-hero .big.pass{color:var(--success);}
+  .result-hero .big.fail{color:var(--danger);}
+  .result-hero .tag{display:inline-block;font-family:'Sora',sans-serif;font-weight:700;font-size:13.5px;padding:6px 16px;border-radius:100px;margin-bottom:14px;}
+  .result-hero .tag.pass{background:#E8F3EA;color:var(--success);}
+  .result-hero .tag.fail{background:#FCE9E9;color:var(--danger);}
+  .result-hero p{color:var(--slate);font-size:14px;}
+  .result-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
+
+  .review-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:12px;}
+  .review-item .rq{font-size:14.5px;font-weight:600;color:var(--navy);margin-bottom:12px;}
+  .review-item .ropt{font-size:13.5px;padding:9px 13px;border-radius:9px;margin-bottom:6px;border:1.5px solid var(--line);}
+  .review-item .ropt.correct{border-color:var(--success);background:#E8F3EA;color:#1E5B2A;}
+  .review-item .ropt.wrong{border-color:var(--danger);background:#FCE9E9;color:#9C2E2E;}
+  .review-item .rexpl{margin-top:10px;font-size:13px;color:var(--slate);background:var(--bg);padding:10px 13px;border-radius:9px;}
+  .review-badge{float:right;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:100px;}
+  .review-badge.pass{background:#E8F3EA;color:var(--success);}
+  .review-badge.fail{background:#FCE9E9;color:var(--danger);}
+
+  .empty-note{text-align:center;padding:60px 20px;color:var(--slate);}
+
+  @media(max-width:600px){
+    .wrap{padding:24px 14px 70px;}
+    .topbar{padding:14px 16px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="spinner"></div>
+  <div>Cargando...</div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <a href="dashboard.html" class="back-link" id="backLink">← Volver al curso</a>
+    <div class="title" id="topTitle">Exámenes de práctica</div>
+    <div id="timerBox"></div>
+  </div>
+  <div class="wrap" id="wrap"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dCutSlRXT1IbMMXLOc4RYw__ztiQBE4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const FN_URL = SUPABASE_URL + '/functions/v1/';
+
+let currentUser = null;
+let accessToken = null;
+let courseId = null;
+
+let examConfigs = [];      // todas las configuraciones del curso (6 capítulo + 1 final)
+let myBestByConfig = {};   // exam_config_id -> { score_pct, passed }
+
+// ---- estado del examen en curso ----
+let attempt = null;        // { attempt_id, mode, time_limit_minutes, started_at, questions }
+let activeConfig = null;
+let curIndex = 0;
+let answeredState = {};    // question_id -> { selected_option_ids, is_correct, correct_option_ids, explanation } (solo modos con feedback)
+let realAnswers = {};      // question_id -> selected_option_ids (solo modo real)
+let timerInterval = null;
+let finishing = false;
+
+function showGateMessage(html, showLogout){
+  document.getElementById('gate').innerHTML = `
+    <div style="max-width:380px;">
+      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:18px;margin-bottom:10px;">GMAX Insurance Academy</div>
+      <div style="color:#C6D2E8;font-size:14.5px;line-height:1.6;">${html}</div>
+      ${showLogout ? '<button class="gate-btn" onclick="window.location.href=\'login.html\'">Ir a iniciar sesión</button>' : ''}
+    </div>`;
+}
+
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ window.location.href = 'login.html'; return; }
+  currentUser = session.user;
+  accessToken = session.access_token;
+
+  const params = new URLSearchParams(window.location.search);
+  courseId = params.get('course');
+  if (!courseId){
+    showGateMessage('Falta indicar el curso. Vuelve a tu panel e intenta de nuevo.', false);
+    return;
+  }
+  document.getElementById('backLink').href = 'dashboard.html?course=' + courseId;
+
+  // Verifica inscripción activa (mismo criterio que dashboard.html / Edge Functions)
+  const { data: enrollment } = await sb
+    .from('enrollments').select('id')
+    .eq('user_id', currentUser.id).eq('course_id', courseId)
+    .eq('status', 'active').gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+  if (!enrollment){
+    showGateMessage('No tienes acceso activo a este curso.', false);
+    return;
+  }
+
+  const { data: configs, error } = await sb
+    .from('exam_configs').select('*')
+    .eq('course_id', courseId)
+    .order('chapter_number', { ascending: true, nullsFirst: false });
+  if (error || !configs || configs.length === 0){
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.add('ready');
+    document.getElementById('wrap').innerHTML = '<div class="empty-note">Todavía no hay exámenes configurados para este curso.</div>';
+    return;
+  }
+  examConfigs = configs;
+
+  const configIds = configs.map(c => c.id);
+  const { data: attempts } = await sb
+    .from('exam_attempts').select('exam_config_id, score_pct, passed, started_at')
+    .eq('user_id', currentUser.id).eq('status', 'submitted')
+    .in('exam_config_id', configIds)
+    .order('started_at', { ascending: false });
+  myBestByConfig = {};
+  (attempts || []).forEach(a => {
+    if (!myBestByConfig[a.exam_config_id]) myBestByConfig[a.exam_config_id] = a; // el primero es el más reciente
+  });
+
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.add('ready');
+  renderHub();
+}
+
+// ============================================================================
+// HUB — lista de exámenes disponibles
+// ============================================================================
+function renderHub(){
+  document.getElementById('topTitle').textContent = 'Exámenes de práctica';
+  document.getElementById('timerBox').innerHTML = '';
+  const chapterConfigs = examConfigs.filter(c => c.config_type === 'chapter_quiz').sort((a,b)=>a.chapter_number-b.chapter_number);
+  const finalConfig = examConfigs.find(c => c.config_type === 'final_exam');
+
+  let html = `
+    <div class="hub-head">
+      <h1>Exámenes de práctica</h1>
+      <p>Pon a prueba lo aprendido en cada capítulo, y cuando estés listo(a), toma el examen final de práctica completo.</p>
+    </div>`;
+
+  if (finalConfig){
+    const best = myBestByConfig[finalConfig.id];
+    html += `
+      <div class="final-card">
+        <h3>🏆 ${escapeHtml(finalConfig.title)}</h3>
+        <div class="meta">${finalConfig.question_count} preguntas · ${finalConfig.duration_minutes} minutos de cronómetro · ${finalConfig.passing_score}% para aprobar
+          ${best ? ` · Tu último resultado: <b style="color:#fff;">${best.score_pct}%</b> (${best.passed ? 'Aprobado' : 'No aprobado'})` : ''}
+        </div>
+        <div class="mode-row">
+          <div class="mode-box">
+            <h4>Modo Práctica</h4>
+            <p>Te decimos al instante si cada respuesta es correcta o no, y por qué.</p>
+            <button class="btn gold" onclick="startExam('${finalConfig.id}','practice')">Comenzar en modo práctica</button>
+          </div>
+          <div class="mode-box">
+            <h4>Modo Real</h4>
+            <p>Como el examen de verdad: no verás correcciones hasta terminar. Al final tienes el repaso completo.</p>
+            <button class="btn gold" onclick="startExam('${finalConfig.id}','real')">Comenzar en modo real</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Exámenes por capítulo</h3>`;
+  chapterConfigs.forEach(c => {
+    const best = myBestByConfig[c.id];
+    html += `
+      <div class="exam-card">
+        <h3>${escapeHtml(c.title)}</h3>
+        <div class="meta">${c.question_count} preguntas aleatorias · sin límite de tiempo · ${c.passing_score}% para aprobar · intentos ilimitados</div>
+        ${best ? `<div class="best ${best.passed?'pass':'fail'}">Último intento: ${best.score_pct}% — ${best.passed?'Aprobado':'No aprobado'}</div><br>` : ''}
+        <button class="btn primary" onclick="startExam('${c.id}', null)">${best ? 'Volver a intentar' : 'Comenzar examen'}</button>
+      </div>`;
+  });
+
+  document.getElementById('wrap').innerHTML = html;
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================================================================
+// INICIAR UN INTENTO
+// ============================================================================
+window.startExam = async function(examConfigId, mode){
+  document.getElementById('wrap').innerHTML = '<div class="empty-note">Preparando tu examen...</div>';
+  try{
+    const res = await fetch(FN_URL + 'start-exam-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken },
+      body: JSON.stringify({ exam_config_id: examConfigId, mode })
+    });
+    const data = await res.json();
+    if (!res.ok){
+      document.getElementById('wrap').innerHTML = `<div class="empty-note">No se pudo iniciar el examen: ${escapeHtml(data.error || 'error desconocido')}<br><br><button class="btn" onclick="renderHub()">← Volver</button></div>`;
+      return;
+    }
+    attempt = data;
+    activeConfig = examConfigs.find(c => c.id === examConfigId);
+    curIndex = 0;
+    answeredState = {};
+    realAnswers = {};
+    finishing = false;
+    window.addEventListener('beforeunload', beforeUnloadWarn);
+    renderQuestion();
+    if (attempt.time_limit_minutes){
+      startTimer(new Date(attempt.started_at).getTime() + attempt.time_limit_minutes * 60000);
+    }
+  } catch(e){
+    document.getElementById('wrap').innerHTML = `<div class="empty-note">Error de conexión. Intenta de nuevo.<br><br><button class="btn" onclick="renderHub()">← Volver</button></div>`;
+  }
+};
+
+function beforeUnloadWarn(e){
+  e.preventDefault();
+  e.returnValue = '';
+}
+
+// ============================================================================
+// CRONÓMETRO
+// ============================================================================
+function startTimer(deadline){
+  const box = document.getElementById('timerBox');
+  function tick(){
+    const msLeft = deadline - Date.now();
+    if (msLeft <= 0){
+      clearInterval(timerInterval);
+      box.innerHTML = '<span class="timer low">00:00</span>';
+      finishExam(true);
+      return;
+    }
+    const totalSec = Math.floor(msLeft / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const label = h > 0
+      ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+      : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    box.innerHTML = `<span class="timer ${totalSec < 300 ? 'low' : ''}">⏱ ${label}</span>`;
+  }
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function stopTimer(){
+  if (timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('timerBox').innerHTML = '';
+}
+
+// ============================================================================
+// TOMAR EL EXAMEN — una pregunta a la vez
+// ============================================================================
+const feedbackModes = ['chapter', 'practice'];
+
+function renderQuestion(){
+  document.getElementById('topTitle').textContent = activeConfig.title;
+  const total = attempt.questions.length;
+  const q = attempt.questions[curIndex];
+  const hasFeedback = feedbackModes.includes(attempt.mode);
+  const already = answeredState[q.id];
+  const isLast = curIndex === total - 1;
+  const inputType = q.is_multi_select ? 'checkbox' : 'radio';
+
+  const gridBtns = attempt.questions.map((qq, i) => {
+    const isAnswered = hasFeedback ? !!answeredState[qq.id] : (realAnswers[qq.id] && realAnswers[qq.id].length);
+    return `<button class="${isAnswered?'answered ':''}${i===curIndex?'current':''}" onclick="jumpTo(${i})">${i+1}</button>`;
+  }).join('');
+
+  let optionsHtml = q.options.map(o => {
+    let cls = 'opt';
+    let disabled = '';
+    if (already){
+      disabled = 'disabled';
+      cls += ' locked';
+      if (already.correct_option_ids.includes(o.id)) cls += ' correct';
+      else if (already.selected_option_ids.includes(o.id)) cls += ' incorrect';
+    } else if (attempt.mode === 'real' && realAnswers[q.id]){
+      // conserva selección previa al navegar en modo real
+    }
+    let checkedAttr = '';
+    if (already){
+      checkedAttr = already.selected_option_ids.includes(o.id) ? 'checked' : '';
+    } else if (attempt.mode === 'real' && realAnswers[q.id] && realAnswers[q.id].includes(o.id)){
+      checkedAttr = 'checked';
+    }
+    return `
+      <label class="${cls}">
+        <input type="${inputType}" name="opt" value="${o.id}" ${disabled} ${checkedAttr} onchange="onOptionChange('${q.id}','${o.id}',${q.is_multi_select})">
+        <span>${escapeHtml(o.option_text)}</span>
+      </label>`;
+  }).join('');
+
+  let feedbackHtml = '';
+  if (already){
+    feedbackHtml = `
+      <div class="feedback ${already.is_correct ? 'ok' : 'bad'}">
+        <b>${already.is_correct ? '✓ ¡Correcto!' : '✗ Incorrecto'}</b>
+        ${already.explanation ? escapeHtml(already.explanation) : ''}
+      </div>`;
+  }
+
+  let footerHtml = '';
+  if (hasFeedback){
+    if (!already){
+      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" id="answerBtn" onclick="submitAnswer('${q.id}')" disabled>Responder</button></div></div>`;
+    } else if (isLast){
+      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" onclick="finishExam(false)">Terminar examen</button></div></div>`;
+    } else {
+      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" onclick="jumpTo(${curIndex+1})">Siguiente pregunta →</button></div></div>`;
+    }
+  } else {
+    footerHtml = `
+      <div class="qnav">
+        <button class="btn" ${curIndex===0?'disabled':''} onclick="jumpTo(${curIndex-1})">← Anterior</button>
+        <div class="right">
+          ${!isLast ? `<button class="btn" onclick="jumpTo(${curIndex+1})">Siguiente →</button>` : ''}
+          <button class="btn primary" onclick="finishExam(false)">Terminar examen</button>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="progress-row">
+      <span class="qcount">Pregunta ${curIndex+1} de ${total}</span>
+      <span class="grid-toggle" onclick="toggleGrid()">Ver todas las preguntas</span>
+    </div>
+    <div class="qgrid" id="qgrid">${gridBtns}</div>
+    <div class="qcard">
+      <div class="qtext">${escapeHtml(q.question_text)}</div>
+      ${optionsHtml}
+      ${feedbackHtml}
+    </div>
+    ${footerHtml}
+  `;
+
+  // Reconstruye el estado del botón "Responder" si ya había una opción marcada
+  if (hasFeedback && !already){
+    const checked = document.querySelector('input[name="opt"]:checked');
+    const btn = document.getElementById('answerBtn');
+    if (btn) btn.disabled = !checked;
+  }
+}
+
+window.toggleGrid = function(){
+  document.getElementById('qgrid').classList.toggle('open');
+};
+
+window.onOptionChange = function(questionId, optionId, isMulti){
+  if (attempt.mode === 'real'){
+    if (isMulti){
+      if (!realAnswers[questionId]) realAnswers[questionId] = [];
+      const idx = realAnswers[questionId].indexOf(optionId);
+      if (idx >= 0) realAnswers[questionId].splice(idx, 1); else realAnswers[questionId].push(optionId);
+    } else {
+      realAnswers[questionId] = [optionId];
+    }
+  } else {
+    const btn = document.getElementById('answerBtn');
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.jumpTo = function(idx){
+  if (idx < 0 || idx >= attempt.questions.length) return;
+  curIndex = idx;
+  renderQuestion();
+};
+
+window.submitAnswer = async function(questionId){
+  const selected = [...document.querySelectorAll('input[name="opt"]:checked')].map(i => i.value);
+  if (selected.length === 0) return;
+  const btn = document.getElementById('answerBtn');
+  if (btn){ btn.disabled = true; btn.textContent = 'Calificando...'; }
+  try{
+    const res = await fetch(FN_URL + 'submit-exam-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken },
+      body: JSON.stringify({ attempt_id: attempt.attempt_id, question_id: questionId, selected_option_ids: selected })
+    });
+    const data = await res.json();
+    if (!res.ok){ alert('Error al calificar: ' + (data.error || 'desconocido')); if (btn){btn.disabled=false; btn.textContent='Responder';} return; }
+    answeredState[questionId] = { selected_option_ids: selected, is_correct: data.is_correct, correct_option_ids: data.correct_option_ids, explanation: data.explanation };
+    renderQuestion();
+  } catch(e){
+    alert('Error de conexión. Intenta de nuevo.');
+    if (btn){ btn.disabled = false; btn.textContent = 'Responder'; }
+  }
+};
+
+// ============================================================================
+// TERMINAR EXAMEN
+// ============================================================================
+window.finishExam = async function(byTimeout){
+  if (finishing) return;
+  finishing = true;
+  if (!byTimeout){
+    const ok = confirm('¿Seguro que quieres terminar el examen? No podrás cambiar tus respuestas después de esto.');
+    if (!ok){ finishing = false; return; }
+  }
+  stopTimer();
+  window.removeEventListener('beforeunload', beforeUnloadWarn);
+  document.getElementById('wrap').innerHTML = '<div class="empty-note">Calificando tu examen...</div>';
+
+  const body = { attempt_id: attempt.attempt_id };
+  if (attempt.mode === 'real'){
+    body.answers = Object.keys(realAnswers).map(qid => ({ question_id: qid, selected_option_ids: realAnswers[qid] }));
+  }
+
+  try{
+    const res = await fetch(FN_URL + 'submit-exam-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok){
+      document.getElementById('wrap').innerHTML = `<div class="empty-note">No se pudo cerrar el examen: ${escapeHtml(data.error||'error desconocido')}</div>`;
+      return;
+    }
+    myBestByConfig[activeConfig.id] = { score_pct: data.score_pct, passed: data.passed };
+    renderResults(data);
+  } catch(e){
+    document.getElementById('wrap').innerHTML = '<div class="empty-note">Error de conexión al calificar. Escríbenos por soporte para revisar tu intento.</div>';
+  }
+};
+
+// ============================================================================
+// RESULTADOS
+// ============================================================================
+function renderResults(data){
+  document.getElementById('topTitle').textContent = activeConfig.title;
+  const showFullReview = attempt.mode === 'real';
+
+  let html = `
+    <div class="result-hero">
+      <div class="tag ${data.passed?'pass':'fail'}">${data.passed ? 'APROBADO' : 'NO APROBADO'}</div>
+      <div class="big ${data.passed?'pass':'fail'}">${data.score_pct}%</div>
+      <p>Respondiste correctamente ${data.correct_count} de ${data.total_questions} preguntas. Necesitas ${data.passing_score}% para aprobar.</p>
+      <div class="result-actions">
+        <button class="btn primary" onclick="startExam('${activeConfig.id}', '${attempt.mode}')">Volver a intentar</button>
+        <button class="btn" onclick="renderHub()">← Ver todos los exámenes</button>
+      </div>
+    </div>`;
+
+  if (showFullReview){
+    html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Repaso completo</h3>`;
+    data.review.forEach((r, i) => {
+      const optsHtml = r.options.map(o => {
+        const isCorrect = r.correct_option_ids.includes(o.id);
+        const wasSelected = r.selected_option_ids.includes(o.id);
+        let cls = '';
+        if (isCorrect) cls = 'correct'; else if (wasSelected) cls = 'wrong';
+        return `<div class="ropt ${cls}">${wasSelected ? '● ' : ''}${escapeHtml(o.option_text)}${isCorrect?' ✓':''}</div>`;
+      }).join('');
+      html += `
+        <div class="review-item">
+          <span class="review-badge ${r.is_correct?'pass':'fail'}">${r.is_correct?'Correcta':'Incorrecta'}</span>
+          <div class="rq">${i+1}. ${escapeHtml(r.question_text)}</div>
+          ${optsHtml}
+          ${r.explanation ? `<div class="rexpl"><b>Explicación:</b> ${escapeHtml(r.explanation)}</div>` : ''}
+        </div>`;
+    });
+  }
+
+  document.getElementById('wrap').innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>
