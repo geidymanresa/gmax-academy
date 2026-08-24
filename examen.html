@@ -218,27 +218,38 @@ async function init(){
 
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.add('ready');
+
+  const chapterParam = params.get('chapter');
+  const finalParam = params.get('final');
+
+  if (chapterParam){
+    const cfg = examConfigs.find(c => c.config_type === 'chapter_quiz' && String(c.chapter_number) === String(chapterParam));
+    if (cfg){ startExam(cfg.id, null); return; }
+    document.getElementById('wrap').innerHTML = '<div class="empty-note">No se encontró el examen de ese capítulo.<br><br><button class="btn" onclick="renderHub()">Ver todos los exámenes</button></div>';
+    return;
+  }
+  if (finalParam){
+    await renderFinalOnly();
+    return;
+  }
   renderHub();
 }
 
 // ============================================================================
-// HUB — lista de exámenes disponibles
+// Progreso de lecciones del curso (para desbloquear el examen final)
 // ============================================================================
-function renderHub(){
-  document.getElementById('topTitle').textContent = 'Exámenes de práctica';
-  document.getElementById('timerBox').innerHTML = '';
-  const chapterConfigs = examConfigs.filter(c => c.config_type === 'chapter_quiz').sort((a,b)=>a.chapter_number-b.chapter_number);
-  const finalConfig = examConfigs.find(c => c.config_type === 'final_exam');
+async function checkLessonCompletion(){
+  const { data: chapters } = await sb.from('chapters').select('id, lessons(id, content_type)').eq('course_id', courseId);
+  const lessonIds = (chapters || []).flatMap(ch => (ch.lessons || []).filter(l => l.content_type !== 'chapter_exam').map(l => l.id));
+  if (lessonIds.length === 0) return { total: 0, done: 0, complete: true };
+  const { data: progress } = await sb.from('lesson_progress').select('lesson_id').eq('user_id', currentUser.id).eq('completed', true).in('lesson_id', lessonIds);
+  const done = (progress || []).length;
+  return { total: lessonIds.length, done, complete: done >= lessonIds.length };
+}
 
-  let html = `
-    <div class="hub-head">
-      <h1>Exámenes de práctica</h1>
-      <p>Pon a prueba lo aprendido en cada capítulo, y cuando estés listo(a), toma el examen final de práctica completo.</p>
-    </div>`;
-
-  if (finalConfig){
-    const best = myBestByConfig[finalConfig.id];
-    html += `
+function finalCardHtml(finalConfig){
+  const best = myBestByConfig[finalConfig.id];
+  return `
       <div class="final-card">
         <h3>🏆 ${escapeHtml(finalConfig.title)}</h3>
         <div class="meta">${finalConfig.question_count} preguntas · ${finalConfig.duration_minutes} minutos de cronómetro · ${finalConfig.passing_score}% para aprobar
@@ -257,7 +268,24 @@ function renderHub(){
           </div>
         </div>
       </div>`;
-  }
+}
+
+// ============================================================================
+// HUB — lista de exámenes disponibles (los 6 de capítulo + el final)
+// ============================================================================
+function renderHub(){
+  document.getElementById('topTitle').textContent = 'Exámenes de práctica';
+  document.getElementById('timerBox').innerHTML = '';
+  const chapterConfigs = examConfigs.filter(c => c.config_type === 'chapter_quiz').sort((a,b)=>a.chapter_number-b.chapter_number);
+  const finalConfig = examConfigs.find(c => c.config_type === 'final_exam');
+
+  let html = `
+    <div class="hub-head">
+      <h1>Exámenes de práctica</h1>
+      <p>Pon a prueba lo aprendido en cada capítulo, y cuando estés listo(a), toma el examen final de práctica completo.</p>
+    </div>`;
+
+  if (finalConfig) html += finalCardHtml(finalConfig);
 
   html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Exámenes por capítulo</h3>`;
   chapterConfigs.forEach(c => {
@@ -272,6 +300,38 @@ function renderHub(){
   });
 
   document.getElementById('wrap').innerHTML = html;
+}
+
+// ============================================================================
+// Solo el examen final (llegada desde el enlace del sidebar de dashboard.html)
+// ============================================================================
+async function renderFinalOnly(){
+  document.getElementById('topTitle').textContent = 'Examen Final de Práctica';
+  document.getElementById('timerBox').innerHTML = '';
+  const finalConfig = examConfigs.find(c => c.config_type === 'final_exam');
+  if (!finalConfig){
+    document.getElementById('wrap').innerHTML = '<div class="empty-note">Este curso todavía no tiene examen final configurado.</div>';
+    return;
+  }
+
+  document.getElementById('wrap').innerHTML = '<div class="empty-note">Verificando tu progreso...</div>';
+  const completion = await checkLessonCompletion();
+  if (!completion.complete){
+    document.getElementById('wrap').innerHTML = `
+      <div class="empty-note">
+        🔒 Todavía no has completado todas las lecciones del curso.<br>
+        Llevas ${completion.done} de ${completion.total}. Termina las que faltan para desbloquear el examen final.<br><br>
+        <a href="dashboard.html?course=${courseId}" class="btn primary" style="display:inline-flex;">← Volver al curso</a>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="hub-head">
+      <h1>Examen Final de Práctica</h1>
+      <p>¡Completaste todas las lecciones! Ya puedes tomar el examen final de 150 preguntas.</p>
+    </div>
+    ${finalCardHtml(finalConfig)}`;
 }
 
 function escapeHtml(str){

@@ -883,7 +883,8 @@ const TYPE_LABELS = {
   image: { icon:'🖼️', placeholder:'Link de la imagen' },
   document: { icon:'📄', placeholder:'Link del documento (PDF, etc.)' },
   text: { icon:'📝', placeholder:'' },
-  quiz: { icon:'❓', placeholder:'' }
+  quiz: { icon:'❓', placeholder:'' },
+  chapter_exam: { icon:'🧪', placeholder:'' }
 };
 
 function addLessonRowEl(list, l){
@@ -924,8 +925,8 @@ function addLessonRowEl(list, l){
 
     <div class="lesson-detail">
       <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
-        value="${escapeHtml(l.video_url||'')}"
-        style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'?'display:none;':''}">
+        value="${escapeHtml(type==='chapter_exam' ? '' : (l.video_url||''))}"
+        style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'||type==='chapter_exam'?'display:none;':''}">
 
       <div class="richtext-wrap" style="${type==='text'?'':'display:none;'}">
         <div class="rt-toolbar">
@@ -939,6 +940,14 @@ function addLessonRowEl(list, l){
       <div class="quiz-builder-field" style="${type==='quiz'?'':'display:none;'}">
         <button type="button" class="btn btn-ghost btn-sm" onclick="openQuizBuilder(this)">Editar preguntas del cuestionario</button>
         <span class="quiz-summary">${quizSummaryText(l.quiz)}</span>
+      </div>
+
+      <div class="quiz-builder-field lesson-examchapter-field" style="${type==='chapter_exam'?'flex-direction:column;align-items:flex-start;':'display:none;'}">
+        <label style="font-family:'Sora',sans-serif;font-size:11.5px;font-weight:700;color:var(--navy);">¿A cuál banco de 45 preguntas pertenece? (el que cargaste por SQL)</label>
+        <select class="lesson-examchapter" style="width:100%;">
+          ${[1,2,3,4,5,6].map(n => `<option value="${n}" ${String(l.video_url)===String(n)?'selected':''}>Capítulo ${n}</option>`).join('')}
+        </select>
+        <span class="quiz-summary">Este examen sacará 15 preguntas al azar de las 45 del Capítulo ${l.video_url || 'seleccionado'}, corrige al instante, sin cronómetro.</span>
       </div>
 
       <label style="font-family:'Sora',sans-serif;font-size:11.5px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;">Tipo de clase</label>
@@ -958,7 +967,7 @@ function addLessonRowEl(list, l){
 }
 
 function labelForType(t){
-  return { video:'Video', image:'Imagen', document:'Documento', text:'Texto', quiz:'Cuestionario' }[t];
+  return { video:'Video', image:'Imagen', document:'Documento', text:'Texto', quiz:'Cuestionario', chapter_exam:'Examen de capítulo (banco seguro)' }[t];
 }
 
 function quizSummaryText(quiz){
@@ -971,14 +980,18 @@ window.onLessonTypeChange = function(select){
   const type = select.value;
   const videoInput = card.querySelector('.lesson-video');
   const richtextWrap = card.querySelector('.richtext-wrap');
-  const quizField = card.querySelector('.quiz-builder-field');
+  const quizField = card.querySelector('.quiz-builder-field:not(.lesson-examchapter-field)');
+  const examChapterField = card.querySelector('.lesson-examchapter-field');
   const icon = card.querySelector('.lesson-type-icon');
 
   icon.textContent = TYPE_LABELS[type].icon;
-  videoInput.style.display = (type==='text'||type==='quiz') ? 'none' : 'block';
+  videoInput.style.display = (type==='text'||type==='quiz'||type==='chapter_exam') ? 'none' : 'block';
   videoInput.placeholder = TYPE_LABELS[type].placeholder;
   richtextWrap.style.display = type==='text' ? 'block' : 'none';
   quizField.style.display = type==='quiz' ? 'flex' : 'none';
+  examChapterField.style.display = type==='chapter_exam' ? 'flex' : 'none';
+  examChapterField.style.flexDirection = 'column';
+  examChapterField.style.alignItems = 'flex-start';
 };
 
 // ---- Editor de texto simple (negrita, cursiva, insertar link) ----
@@ -1196,6 +1209,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         const lTitle = card.querySelector('.lesson-title').value.trim();
         const lType = card.querySelector('.lesson-type').value;
         const lVideo = card.querySelector('.lesson-video').value.trim();
+        const lExamChapter = card.querySelector('.lesson-examchapter') ? card.querySelector('.lesson-examchapter').value : '';
         const lDesc = card.querySelector('.lesson-desc').value.trim();
         const lRichtext = card.querySelector('.lesson-richtext') ? card.querySelector('.lesson-richtext').innerHTML.trim() : '';
         if (!lTitle) continue;
@@ -1205,9 +1219,13 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
           rtype: r.querySelector('.link-type').value
         })).filter(l => l.label || l.url);
 
+        let lVideoToSave = lVideo;
+        if (lType === 'text' || lType === 'quiz') lVideoToSave = null;
+        else if (lType === 'chapter_exam') lVideoToSave = lExamChapter;
+
         const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({
           chapter_id: chData.id, title: lTitle,
-          video_url: (lType==='text'||lType==='quiz') ? null : lVideo,
+          video_url: lVideoToSave,
           text_content: lType==='text' ? lRichtext : null,
           description: lDesc, resource_links: links,
           position: lessonPos, content_type: lType

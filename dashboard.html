@@ -40,6 +40,7 @@
   .nav-scroll{flex:1;overflow-y:auto;padding:10px 0;}
   .nav-item-special{display:flex;align-items:center;gap:10px;padding:12px 22px;font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;background:var(--bg);margin:0 12px 8px;border-radius:9px;}
   .nav-item-special.active{background:var(--navy);color:#fff;}
+  .nav-item-special.locked-nav{opacity:.55;cursor:not-allowed;font-size:12.5px;}
   .side-chapter{margin-bottom:2px;}
   .side-chapter-head{display:flex;align-items:center;gap:8px;padding:11px 22px;cursor:pointer;user-select:none;}
   .side-chapter-head:hover{background:var(--bg);}
@@ -146,7 +147,7 @@
       <div class="progress-label"><span>Tu progreso</span><span id="progressPct">0%</span></div>
       <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
     </div>
-    <a href="#" id="examLink" class="nav-item-special" style="display:none;">📝 Exámenes de práctica</a>
+    <a href="#" id="examLink" class="nav-item-special" style="display:none;">🏆 Examen Final de Práctica</a>
     <div class="nav-scroll" id="navScroll"></div>
     <div class="sidebar-foot">
       <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
@@ -272,10 +273,6 @@ async function loadEnrollments(){
   document.getElementById('app').classList.add('ready');
   document.getElementById('courseName').textContent = currentCourse.title;
 
-  const examLinkEl = document.getElementById('examLink');
-  examLinkEl.href = 'examen.html?course=' + currentCourse.id;
-  examLinkEl.style.display = 'flex';
-
   await loadCourseContent(enrollments[0].last_lesson_id);
 }
 
@@ -306,6 +303,7 @@ async function loadCourseContent(lastLessonId){
   }
 
   renderSidebar();
+  if (!isPreviewMode) await setupExamLink();
   let startIdx = 0;
   if (lastLessonId){
     const foundIdx = allLessons.findIndex(l => l.id === lastLessonId);
@@ -344,9 +342,10 @@ function renderSidebar(){
         chapterOpen = true;
       }
       const done = progressMap[item.id];
+      const isExam = item.content_type === 'chapter_exam';
       html += `
         <div class="lesson-item" data-idx="${idx}" onclick="selectItem(${idx})">
-          <span class="lesson-check ${done?'done':''}">${done?'✓':''}</span>
+          <span class="lesson-check ${done?'done':''}">${isExam ? '📝' : (done?'✓':'')}</span>
           <span>${item.title}</span>
         </div>`;
     }
@@ -362,12 +361,43 @@ window.toggleSideChapter = function(num){
 };
 
 function updateProgressBar(){
-  const lessons = allLessons.filter(l=>l.type==='lesson');
+  const lessons = allLessons.filter(l=>l.type==='lesson' && l.content_type!=='chapter_exam');
   const done = lessons.filter(l=>progressMap[l.id]).length;
   const pct = lessons.length ? Math.round((done/lessons.length)*100) : 0;
   document.getElementById('progressPct').textContent = pct + '%';
   document.getElementById('progressFill').style.width = pct + '%';
 }
+
+// ---------- ENLACE AL EXAMEN FINAL (se desbloquea al completar todas las lecciones) ----------
+async function setupExamLink(){
+  const examLinkEl = document.getElementById('examLink');
+  const { data: finalCfg } = await sb.from('exam_configs').select('id').eq('course_id', currentCourse.id).eq('config_type', 'final_exam').maybeSingle();
+  if (!finalCfg){
+    examLinkEl.style.display = 'none';
+    return;
+  }
+  examLinkEl.href = 'examen.html?course=' + currentCourse.id + '&final=1';
+  examLinkEl.style.display = 'flex';
+
+  const lessonsOnly = allLessons.filter(l => l.type === 'lesson' && l.content_type !== 'chapter_exam');
+  const doneCount = lessonsOnly.filter(l => progressMap[l.id]).length;
+  const isComplete = lessonsOnly.length > 0 && doneCount >= lessonsOnly.length;
+
+  if (isComplete){
+    examLinkEl.textContent = '🏆 Examen Final de Práctica';
+    examLinkEl.classList.remove('locked-nav');
+  } else {
+    examLinkEl.textContent = `🔒 Examen Final (${doneCount}/${lessonsOnly.length} lecciones)`;
+    examLinkEl.classList.add('locked-nav');
+  }
+}
+
+document.getElementById('examLink').addEventListener('click', (e) => {
+  if (document.getElementById('examLink').classList.contains('locked-nav')){
+    e.preventDefault();
+    alert('Todavía te faltan lecciones por completar. Termina todas las clases del curso para desbloquear el examen final.');
+  }
+});
 
 window.selectItem = function(idx){
   activeItemIndex = idx;
@@ -426,10 +456,11 @@ async function renderMain(item){
 
   const isFirst = activeItemIndex === 0;
   const isLast = activeItemIndex === allLessons.length - 1;
+  const marksProgress = item.type === 'lesson' && contentType !== 'chapter_exam';
   const navButtonsHtml = `
     <div class="lesson-nav-buttons">
       <button class="nav-btn prev" ${isFirst?'disabled':''} onclick="selectItem(${activeItemIndex - 1})">← Clase anterior</button>
-      <button class="nav-btn next" ${isLast?'disabled':''} onclick="goToNext(${item.type==='lesson' ? `'${item.id}'` : 'null'}, ${activeItemIndex + 1})">Siguiente clase →</button>
+      <button class="nav-btn next" ${isLast?'disabled':''} onclick="goToNext(${marksProgress ? `'${item.id}'` : 'null'}, ${activeItemIndex + 1})">Siguiente clase →</button>
     </div>`;
 
   if (contentType === 'quiz'){
@@ -440,6 +471,22 @@ async function renderMain(item){
       ${navButtonsHtml}
     `;
     renderQuiz(item.id);
+    return;
+  }
+
+  if (contentType === 'chapter_exam'){
+    const chapterNum = item.video_url;
+    main.innerHTML = `
+      <div class="lesson-head"><h1>${item.title}</h1></div>
+      <p class="lesson-desc">${item.description || ''}</p>
+      <div class="links-card" style="text-align:center;padding:38px 24px;">
+        <div style="font-size:32px;margin-bottom:10px;">📝</div>
+        <h3 style="margin-bottom:8px;">Examen de práctica — Capítulo ${chapterNum}</h3>
+        <p style="color:var(--slate);font-size:13.5px;margin-bottom:20px;">15 preguntas aleatorias de este capítulo, corrección al instante. Puedes repetirlo las veces que quieras.</p>
+        <button class="complete-btn" onclick="window.location.href='examen.html?course=${currentCourse.id}&chapter=${chapterNum}'">Comenzar examen del Capítulo ${chapterNum}</button>
+      </div>
+      ${navButtonsHtml}
+    `;
     return;
   }
 
