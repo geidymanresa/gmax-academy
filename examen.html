@@ -182,15 +182,20 @@ async function init(){
   }
   document.getElementById('backLink').href = 'dashboard.html?course=' + courseId;
 
-  // Verifica inscripción activa (mismo criterio que dashboard.html / Edge Functions)
+  // Verifica inscripción activa (mismo criterio que dashboard.html / Edge Functions),
+  // o que sea administradora probando el curso (misma excepción que el resto del sitio).
   const { data: enrollment } = await sb
     .from('enrollments').select('id')
     .eq('user_id', currentUser.id).eq('course_id', courseId)
     .eq('status', 'active').gt('expires_at', new Date().toISOString())
     .maybeSingle();
   if (!enrollment){
-    showGateMessage('No tienes acceso activo a este curso.', false);
-    return;
+    const { data: profile } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
+    const isAdmin = profile && (profile.role === 'admin' || profile.role === 'super_admin');
+    if (!isAdmin){
+      showGateMessage('No tienes acceso activo a este curso.', false);
+      return;
+    }
   }
 
   const { data: configs, error } = await sb

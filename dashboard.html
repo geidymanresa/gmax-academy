@@ -303,7 +303,7 @@ async function loadCourseContent(lastLessonId){
   }
 
   renderSidebar();
-  if (!isPreviewMode) await setupExamLink();
+  await setupExamLink();
   let startIdx = 0;
   if (lastLessonId){
     const foundIdx = allLessons.findIndex(l => l.id === lastLessonId);
