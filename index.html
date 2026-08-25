@@ -757,7 +757,7 @@
     const email = document.getElementById('wfEmail-' + courseId).value.trim();
     const msgEl = document.getElementById('wfMsg-' + courseId);
     if (!email){ msgEl.textContent = 'Escribe tu correo.'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
-    const { error } = await sb.from('leads').insert({ full_name: name, email, source: 'course_waitlist', course_id: courseId });
+    const { error } = await sb.from('leads').insert({ full_name: name, email, source: 'course_waitlist', source_detail: courseId });
     if (error){ msgEl.textContent = 'Hubo un error, intenta de nuevo.'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
     msgEl.textContent = '¡Listo! Te avisamos apenas esté disponible.';
     msgEl.className = 'waitlist-msg ok';
