@@ -152,6 +152,34 @@
   .materials .free-card .btn{width:100%;justify-content:center;}
   .materials .free-card a.btn-gold{color:var(--navy) !important;}
 
+  /* VIDEOS (YouTube gratis) */
+  .videos{background:#fff;}
+  .videos .sec-head p a{color:var(--blue);font-weight:700;}
+  .video-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .video-card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(18,41,79,.15);}
+  .video-card .video-frame-wrap{position:relative;width:100%;padding-top:56.25%;background:#0F2447;}
+  .video-card .video-frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+  .video-card .video-body{padding:18px 20px 22px;}
+  .video-card h3{font-size:14.5px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+  .video-card p{font-size:12.5px;color:var(--slate);margin-bottom:0;}
+  .video-sub-cta{text-align:center;margin-top:32px;}
+  .video-sub-cta a{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:#fff;background:#FF0000;padding:12px 24px;border-radius:9px;display:inline-flex;align-items:center;gap:8px;}
+
+  /* COOKIE BANNER */
+  #cookieBanner{position:fixed;left:0;right:0;bottom:0;z-index:500;background:var(--navy);color:#E7ECF7;padding:18px 24px;display:none;box-shadow:0 -6px 24px rgba(0,0,0,.18);}
+  #cookieBanner.show{display:block;}
+  .cookie-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .cookie-inner p{font-size:13px;color:#C6D2E8;max-width:720px;margin:0;}
+  .cookie-inner p a{color:var(--gold);font-weight:700;}
+  .cookie-actions{display:flex;gap:10px;flex:none;}
+  .cookie-actions button{font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;}
+  .btn-cookie-accept{background:var(--gold);color:var(--navy);}
+  .btn-cookie-decline{background:rgba(255,255,255,.1);color:#fff;}
+
+  @media(max-width:760px){
+    .video-grid{grid-template-columns:1fr;}
+  }
+
   .empty-catalog{color:var(--slate);font-size:14px;padding:30px;text-align:center;grid-column:1/-1;}
 
   .cart-overlay{display:none;position:fixed;inset:0;background:rgba(15,36,71,.5);z-index:250;}
@@ -207,6 +235,8 @@
   footer ul{list-style:none;display:flex;flex-direction:column;gap:10px;}
   footer ul a{font-size:13.5px;color:#B7C2DA;}
   footer ul a:hover{color:var(--gold);}
+  .foot-legal a{color:#B7C2DA;}
+  .foot-legal a:hover{color:var(--gold);}
   .foot-bottom{border-top:1px solid rgba(255,255,255,.1);padding-top:20px;font-size:12.5px;color:#7C8AA8;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
   .social-row{display:flex;gap:12px;margin-top:16px;}
   .social-row a{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;}
@@ -284,6 +314,7 @@
       <a href="#recursos">Recursos Gratis</a>
       <a href="#materiales">Materiales</a>
       <a href="#equipo">Equipo</a>
+      <a href="#videos">Videos</a>
       <a href="https://partners.xcelsolutions.com/gmax" target="_blank">Educación Continua ↗</a>
       <a href="https://gmaxallinsurance.com/" target="_blank">GMAX All Insurance ↗</a>
     </div>
@@ -300,6 +331,7 @@
     <a href="#catalogo">Cursos</a>
     <a href="#recursos">Recursos Gratis</a>
     <a href="#equipo">Equipo</a>
+    <a href="#videos">Videos</a>
     <a href="https://partners.xcelsolutions.com/gmax" target="_blank">Educación Continua ↗</a>
     <a href="https://gmaxallinsurance.com/" target="_blank">GMAX All Insurance ↗</a>
     <a href="login.html" class="btn btn-primary">Iniciar Sesión</a>
@@ -446,6 +478,22 @@
   </div>
 </section>
 
+<section class="videos" id="videos">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Gratis en YouTube</div>
+      <h2>Videos y consejos para tu carrera en seguros</h2>
+      <p>Contenido gratuito directo de nuestro canal de YouTube, sin necesidad de dejar tus datos.</p>
+    </div>
+    <div class="video-grid" id="videosGrid">
+      <div class="empty-catalog">Cargando videos...</div>
+    </div>
+    <div class="video-sub-cta">
+      <a href="https://www.youtube.com/@gmaxallinsurance" target="_blank">▶ Suscríbete a nuestro canal ↗</a>
+    </div>
+  </div>
+</section>
+
 <section class="team" id="equipo">
   <div class="wrap">
     <div class="sec-head">
@@ -478,10 +526,10 @@
         <div class="logo"><img src="logo-academy.jpg" alt="GMAX Insurance Academy" style="height:44px;width:auto;border-radius:6px;"></div>
         <p class="small">Un proyecto de GMAX All Insurance para fortalecer la educación financiera y profesional dentro de la industria de seguros en Texas.</p>
         <div class="social-row">
-          <a href="#" target="_blank" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z"/></svg></a>
-          <a href="#" target="_blank" title="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7C2DA" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
-          <a href="#" target="_blank" title="TikTok"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M16.5 3c.4 2.2 1.8 3.7 4 4v3c-1.5 0-2.9-.4-4-1.2v6.7A5.5 5.5 0 1 1 11 10v3.1a2.4 2.4 0 1 0 2.5 2.4V3h3Z"/></svg></a>
-          <a href="#" target="_blank" title="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M23 12s0-3.6-.5-5.3c-.3-1-1-1.7-2-2C18.9 4.2 12 4.2 12 4.2s-6.9 0-8.5.5c-1 .3-1.7 1-2 2C1 8.4 1 12 1 12s0 3.6.5 5.3c.3 1 1 1.7 2 2 1.6.5 8.5.5 8.5.5s6.9 0 8.5-.5c1-.3 1.7-1 2-2 .5-1.7.5-5.3.5-5.3ZM9.8 15.5v-7l6 3.5-6 3.5Z"/></svg></a>
+          <a href="https://www.facebook.com/people/Gmax-all-Insurance/61572063951571/" target="_blank" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z"/></svg></a>
+          <a href="https://www.instagram.com/gmax.all.insurance/" target="_blank" title="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7C2DA" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+          <a href="https://www.tiktok.com/@gmax.all.insurance" target="_blank" title="TikTok"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M16.5 3c.4 2.2 1.8 3.7 4 4v3c-1.5 0-2.9-.4-4-1.2v6.7A5.5 5.5 0 1 1 11 10v3.1a2.4 2.4 0 1 0 2.5 2.4V3h3Z"/></svg></a>
+          <a href="https://www.youtube.com/@gmaxallinsurance" target="_blank" title="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B7C2DA"><path d="M23 12s0-3.6-.5-5.3c-.3-1-1-1.7-2-2C18.9 4.2 12 4.2 12 4.2s-6.9 0-8.5.5c-1 .3-1.7 1-2 2C1 8.4 1 12 1 12s0 3.6.5 5.3c.3 1 1 1.7 2 2 1.6.5 8.5.5 8.5.5s6.9 0 8.5-.5c1-.3 1.7-1 2-2 .5-1.7.5-5.3.5-5.3ZM9.8 15.5v-7l6 3.5-6 3.5Z"/></svg></a>
         </div>
       </div>
       <div>
@@ -506,6 +554,7 @@
     </div>
     <div class="foot-bottom">
       <span>© 2026 GMAX Insurance Academy. Todos los derechos reservados.</span>
+      <span class="foot-legal"><a href="terminos.html">Términos y Condiciones</a> · <a href="privacidad.html">Política de Privacidad</a> · <a href="cookies.html">Política de Cookies</a></span>
       <span>Houston, Texas</span>
     </div>
   </div>
@@ -779,7 +828,8 @@
 
   // ---------------- RECURSOS GRATUITOS ----------------
   async function loadFreeResources(){
-    const { data: resources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at',{ascending:false});
+    const { data: allResources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at',{ascending:false});
+    const resources = (allResources || []).filter(r => r.content_type !== 'video');
     const grid = document.getElementById('freeResourcesGrid');
     if (!resources || resources.length === 0){
       grid.innerHTML = '<div class="empty-catalog" style="color:#C6D2E8;">Todavía no hay recursos gratuitos publicados.</div>';
@@ -795,6 +845,41 @@
         <h3>${r.title}</h3>
         <p>${r.description || ''}</p>
         <a href="#" onclick="event.preventDefault();openLeadGate('${r.id}','${r.title.replace(/'/g,"\\\\'")}','${r.file_url}')">Descargar gratis →</a>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------------- VIDEOS GRATIS (YouTube) ----------------
+  function getYouTubeEmbedUrl(url){
+    if (!url) return null;
+    let id = null;
+    let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/);
+    if (m) id = m[1];
+    if (!id) return null;
+    return 'https://www.youtube.com/embed/' + id;
+  }
+
+  async function loadVideos(){
+    const { data: allResources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at',{ascending:false});
+    const videos = (allResources || []).filter(r => r.content_type === 'video');
+    const grid = document.getElementById('videosGrid');
+    const section = document.getElementById('videos');
+    if (!videos || videos.length === 0){
+      if (section) section.style.display = 'none';
+      return;
+    }
+    grid.innerHTML = videos.map(v => {
+      const embedUrl = getYouTubeEmbedUrl(v.file_url);
+      const frame = embedUrl
+        ? `<iframe src="${embedUrl}" title="${v.title}" allowfullscreen loading="lazy"></iframe>`
+        : `<a href="${v.file_url}" target="_blank" style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff;font-family:'Sora',sans-serif;font-weight:700;">Ver video ↗</a>`;
+      return `
+      <div class="video-card">
+        <div class="video-frame-wrap">${frame}</div>
+        <div class="video-body">
+          <h3>${v.title}</h3>
+          <p>${v.description || ''}</p>
+        </div>
       </div>`;
     }).join('');
   }
@@ -938,7 +1023,27 @@
   loadCourses();
   loadFreeResources();
   loadMaterials();
+  loadVideos();
   loadOverviewLists();
+  initCookieBanner();
+
+  // ---------------- COOKIES (consentimiento) ----------------
+  function initCookieBanner(){
+    try {
+      const consent = localStorage.getItem('gmax_cookie_consent');
+      if (!consent){
+        document.getElementById('cookieBanner').classList.add('show');
+      }
+    } catch (e){
+      // si localStorage no está disponible, no mostramos el banner para no romper la página
+    }
+  }
+  window.setCookieConsent = function(accepted){
+    try {
+      localStorage.setItem('gmax_cookie_consent', accepted ? 'accepted' : 'declined');
+    } catch (e){}
+    document.getElementById('cookieBanner').classList.remove('show');
+  };
 
   async function loadOverviewLists(){
     const { data: courses } = await sb.from('courses').select('title').eq('status','published').order('created_at',{ascending:true}).limit(3);
@@ -966,6 +1071,16 @@
     }
   }
 </script>
+
+<div id="cookieBanner">
+  <div class="cookie-inner">
+    <p>Usamos cookies propias y de terceros para mejorar tu experiencia, recordar tus preferencias y analizar el uso del sitio. Puedes leer más en nuestra <a href="cookies.html">Política de Cookies</a>.</p>
+    <div class="cookie-actions">
+      <button class="btn-cookie-decline" onclick="setCookieConsent(false)">Rechazar</button>
+      <button class="btn-cookie-accept" onclick="setCookieConsent(true)">Aceptar</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
