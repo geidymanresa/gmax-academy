@@ -148,7 +148,7 @@ let accessToken = null;
 let courseId = null;
 
 let examConfigs = [];      // todas las configuraciones del curso (6 capítulo + 1 final)
-let myBestByConfig = {};   // exam_config_id -> { score_pct, passed }
+let myStatsByConfig = {};  // exam_config_id -> { latest:{score_pct,passed}, count, passedCount, failedCount }
 
 // ---- estado del examen en curso ----
 let attempt = null;        // { attempt_id, mode, time_limit_minutes, started_at, questions }
@@ -216,9 +216,14 @@ async function init(){
     .eq('user_id', currentUser.id).eq('status', 'submitted')
     .in('exam_config_id', configIds)
     .order('started_at', { ascending: false });
-  myBestByConfig = {};
+  myStatsByConfig = {};
   (attempts || []).forEach(a => {
-    if (!myBestByConfig[a.exam_config_id]) myBestByConfig[a.exam_config_id] = a; // el primero es el más reciente
+    if (!myStatsByConfig[a.exam_config_id]){
+      myStatsByConfig[a.exam_config_id] = { latest: a, count: 0, passedCount: 0, failedCount: 0 };
+    }
+    const st = myStatsByConfig[a.exam_config_id];
+    st.count++;
+    if (a.passed) st.passedCount++; else st.failedCount++;
   });
 
   document.getElementById('gate').classList.add('hidden');
@@ -253,13 +258,14 @@ async function checkLessonCompletion(){
 }
 
 function finalCardHtml(finalConfig){
-  const best = myBestByConfig[finalConfig.id];
+  const stats = myStatsByConfig[finalConfig.id];
   return `
       <div class="final-card">
         <h3>🏆 ${escapeHtml(finalConfig.title)}</h3>
         <div class="meta">${finalConfig.question_count} preguntas · ${finalConfig.duration_minutes} minutos de cronómetro · ${finalConfig.passing_score}% para aprobar
-          ${best ? ` · Tu último resultado: <b style="color:#fff;">${best.score_pct}%</b> (${best.passed ? 'Aprobado' : 'No aprobado'})` : ''}
+          ${stats ? ` · Tu último resultado: <b style="color:#fff;">${stats.latest.score_pct}%</b> (${stats.latest.passed ? 'Aprobado' : 'No aprobado'})` : ''}
         </div>
+        ${stats ? `<div class="meta" style="margin-top:-10px;">Lo has tomado <b style="color:#fff;">${stats.count}</b> ${stats.count===1?'vez':'veces'} — <b style="color:#8FE0A8;">${stats.passedCount} aprobado${stats.passedCount===1?'':'s'}</b>, <b style="color:#F2A3A0;">${stats.failedCount} no aprobado${stats.failedCount===1?'':'s'}</b>.</div>` : ''}
         <div class="mode-row">
           <div class="mode-box">
             <h4>Modo Práctica</h4>
@@ -294,13 +300,13 @@ function renderHub(){
 
   html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Exámenes por capítulo</h3>`;
   chapterConfigs.forEach(c => {
-    const best = myBestByConfig[c.id];
+    const stats = myStatsByConfig[c.id];
     html += `
       <div class="exam-card">
         <h3>${escapeHtml(c.title)}</h3>
         <div class="meta">${c.question_count} preguntas aleatorias · sin límite de tiempo · ${c.passing_score}% para aprobar · intentos ilimitados</div>
-        ${best ? `<div class="best ${best.passed?'pass':'fail'}">Último intento: ${best.score_pct}% — ${best.passed?'Aprobado':'No aprobado'}</div><br>` : ''}
-        <button class="btn primary" onclick="startExam('${c.id}', null)">${best ? 'Volver a intentar' : 'Comenzar examen'}</button>
+        ${stats ? `<div class="best ${stats.latest.passed?'pass':'fail'}">Último intento: ${stats.latest.score_pct}% — ${stats.latest.passed?'Aprobado':'No aprobado'}</div><div class="meta" style="margin-top:-6px;">Lo has tomado ${stats.count} ${stats.count===1?'vez':'veces'} — ${stats.passedCount} aprobado${stats.passedCount===1?'':'s'}, ${stats.failedCount} no aprobado${stats.failedCount===1?'':'s'}.</div><br>` : ''}
+        <button class="btn primary" onclick="startExam('${c.id}', null)">${stats ? 'Volver a intentar' : 'Comenzar examen'}</button>
       </div>`;
   });
 
@@ -465,12 +471,13 @@ function renderQuestion(){
 
   let footerHtml = '';
   if (hasFeedback){
+    const prevBtn = `<button class="btn" ${curIndex===0?'disabled':''} onclick="jumpTo(${curIndex-1})">← Anterior</button>`;
     if (!already){
-      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" id="answerBtn" onclick="submitAnswer('${q.id}')" disabled>Responder</button></div></div>`;
+      footerHtml = `<div class="qnav">${prevBtn}<div class="right"><button class="btn primary" id="answerBtn" onclick="submitAnswer('${q.id}')" disabled>Responder</button></div></div>`;
     } else if (isLast){
-      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" onclick="finishExam(false)">Terminar examen</button></div></div>`;
+      footerHtml = `<div class="qnav">${prevBtn}<div class="right"><button class="btn primary" onclick="finishExam(false)">Terminar examen</button></div></div>`;
     } else {
-      footerHtml = `<div class="qnav"><div></div><div class="right"><button class="btn primary" onclick="jumpTo(${curIndex+1})">Siguiente pregunta →</button></div></div>`;
+      footerHtml = `<div class="qnav">${prevBtn}<div class="right"><button class="btn primary" onclick="jumpTo(${curIndex+1})">Siguiente pregunta →</button></div></div>`;
     }
   } else {
     footerHtml = `
@@ -581,7 +588,13 @@ window.finishExam = async function(byTimeout){
       document.getElementById('wrap').innerHTML = `<div class="empty-note">No se pudo cerrar el examen: ${escapeHtml(data.error||'error desconocido')}</div>`;
       return;
     }
-    myBestByConfig[activeConfig.id] = { score_pct: data.score_pct, passed: data.passed };
+    if (!myStatsByConfig[activeConfig.id]){
+      myStatsByConfig[activeConfig.id] = { latest: null, count: 0, passedCount: 0, failedCount: 0 };
+    }
+    const st = myStatsByConfig[activeConfig.id];
+    st.latest = { score_pct: data.score_pct, passed: data.passed };
+    st.count++;
+    if (data.passed) st.passedCount++; else st.failedCount++;
     renderResults(data);
   } catch(e){
     document.getElementById('wrap').innerHTML = '<div class="empty-note">Error de conexión al calificar. Escríbenos por soporte para revisar tu intento.</div>';
@@ -593,38 +606,37 @@ window.finishExam = async function(byTimeout){
 // ============================================================================
 function renderResults(data){
   document.getElementById('topTitle').textContent = activeConfig.title;
-  const showFullReview = attempt.mode === 'real';
+  const stats = myStatsByConfig[activeConfig.id];
 
   let html = `
     <div class="result-hero">
       <div class="tag ${data.passed?'pass':'fail'}">${data.passed ? 'APROBADO' : 'NO APROBADO'}</div>
       <div class="big ${data.passed?'pass':'fail'}">${data.score_pct}%</div>
       <p>Respondiste correctamente ${data.correct_count} de ${data.total_questions} preguntas. Necesitas ${data.passing_score}% para aprobar.</p>
+      ${stats ? `<p style="margin-top:8px;color:var(--slate);font-size:13.5px;">Lo has tomado <b style="color:var(--navy);">${stats.count}</b> ${stats.count===1?'vez':'veces'} — <b style="color:var(--success);">${stats.passedCount}</b> aprobado${stats.passedCount===1?'':'s'}, <b style="color:var(--danger);">${stats.failedCount}</b> no aprobado${stats.failedCount===1?'':'s'}.</p>` : ''}
       <div class="result-actions">
         <button class="btn primary" onclick="startExam('${activeConfig.id}', '${attempt.mode}')">Volver a intentar</button>
         <button class="btn" onclick="renderHub()">← Ver todos los exámenes</button>
       </div>
     </div>`;
 
-  if (showFullReview){
-    html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Repaso completo</h3>`;
-    data.review.forEach((r, i) => {
-      const optsHtml = r.options.map(o => {
-        const isCorrect = r.correct_option_ids.includes(o.id);
-        const wasSelected = r.selected_option_ids.includes(o.id);
-        let cls = '';
-        if (isCorrect) cls = 'correct'; else if (wasSelected) cls = 'wrong';
-        return `<div class="ropt ${cls}">${wasSelected ? '● ' : ''}${escapeHtml(o.option_text)}${isCorrect?' ✓':''}</div>`;
-      }).join('');
-      html += `
-        <div class="review-item">
-          <span class="review-badge ${r.is_correct?'pass':'fail'}">${r.is_correct?'Correcta':'Incorrecta'}</span>
-          <div class="rq">${i+1}. ${escapeHtml(r.question_text)}</div>
-          ${optsHtml}
-          ${r.explanation ? `<div class="rexpl"><b>Explicación:</b> ${escapeHtml(r.explanation)}</div>` : ''}
-        </div>`;
-    });
-  }
+  html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Repaso completo — tus respuestas</h3>`;
+  data.review.forEach((r, i) => {
+    const optsHtml = r.options.map(o => {
+      const isCorrect = r.correct_option_ids.includes(o.id);
+      const wasSelected = r.selected_option_ids.includes(o.id);
+      let cls = '';
+      if (isCorrect) cls = 'correct'; else if (wasSelected) cls = 'wrong';
+      return `<div class="ropt ${cls}">${wasSelected ? '● ' : ''}${escapeHtml(o.option_text)}${isCorrect?' ✓':''}</div>`;
+    }).join('');
+    html += `
+      <div class="review-item">
+        <span class="review-badge ${r.is_correct?'pass':'fail'}">${r.is_correct?'Correcta':'Incorrecta'}</span>
+        <div class="rq">${i+1}. ${escapeHtml(r.question_text)}</div>
+        ${optsHtml}
+        ${r.explanation ? `<div class="rexpl"><b>Explicación:</b> ${escapeHtml(r.explanation)}</div>` : ''}
+      </div>`;
+  });
 
   document.getElementById('wrap').innerHTML = html;
 }
