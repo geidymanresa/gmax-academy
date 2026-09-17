@@ -811,7 +811,13 @@
     const email = document.getElementById('wfEmail-' + courseId).value.trim();
     const msgEl = document.getElementById('wfMsg-' + courseId);
     if (!email){ msgEl.textContent = 'Escribe tu correo.'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
-    const { data: newLead, error } = await sb.from('leads').insert({ full_name: name, email, source: 'course_waitlist', source_detail: courseId }).select('id').single();
+    // Generamos el id nosotros mismos (en vez de pedirle a Supabase que nos
+    // devuelva el registro recién creado con .select()), porque leer de vuelta
+    // requiere permiso de LECTURA pública sobre la tabla leads, y eso expondría
+    // los datos de TODOS los leads (nombre/correo/teléfono) a cualquiera desde
+    // la consola del navegador. Así solo hace falta permiso de escritura.
+    const newLeadId = crypto.randomUUID();
+    const { error } = await sb.from('leads').insert({ id: newLeadId, full_name: name, email, source: 'course_waitlist', source_detail: courseId });
     if (error){ msgEl.textContent = 'Hubo un error, intenta de nuevo.'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
     // Manda el correo de confirmación inmediato ("ya quedaste anotado"). Si
     // este correo falla por lo que sea, no bloqueamos el mensaje de éxito en
@@ -819,7 +825,7 @@
     fetch(LEAD_EMAILS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
-      body: JSON.stringify({ type: 'waitlist_confirm', lead_id: newLead.id })
+      body: JSON.stringify({ type: 'waitlist_confirm', lead_id: newLeadId })
     }).catch(() => {});
     msgEl.textContent = '¡Listo! Te avisamos apenas esté disponible.';
     msgEl.className = 'waitlist-msg ok';
