@@ -147,7 +147,7 @@
       <div class="progress-label"><span>Tu progreso</span><span id="progressPct">0%</span></div>
       <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
     </div>
-    <a href="#" id="examLink" class="nav-item-special" style="display:none;">🏆 Examen Final de Práctica</a>
+    <a href="#" id="examLink" class="nav-item-special" style="display:none;">📝 Exámenes</a>
     <div class="nav-scroll" id="navScroll"></div>
     <div class="sidebar-foot">
       <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
@@ -368,36 +368,21 @@ function updateProgressBar(){
   document.getElementById('progressFill').style.width = pct + '%';
 }
 
-// ---------- ENLACE AL EXAMEN FINAL (se desbloquea al completar todas las lecciones) ----------
+// ---------- ENLACE A "EXÁMENES" (lleva al hub: exámenes por capítulo + examen final) ----------
+// El examen final se desbloquea dentro de examen.html cuando el alumno ya aprobó,
+// al menos una vez, el examen de cada capítulo — no por completar lecciones (ver examen.html).
 async function setupExamLink(){
   const examLinkEl = document.getElementById('examLink');
-  const { data: finalCfg } = await sb.from('exam_configs').select('id').eq('course_id', currentCourse.id).eq('config_type', 'final_exam').maybeSingle();
-  if (!finalCfg){
+  const { data: configs } = await sb.from('exam_configs').select('id').eq('course_id', currentCourse.id);
+  if (!configs || configs.length === 0){
     examLinkEl.style.display = 'none';
     return;
   }
-  examLinkEl.href = 'examen.html?course=' + currentCourse.id + '&final=1';
+  examLinkEl.href = 'examen.html?course=' + currentCourse.id;
   examLinkEl.style.display = 'flex';
-
-  const lessonsOnly = allLessons.filter(l => l.type === 'lesson' && l.content_type !== 'chapter_exam');
-  const doneCount = lessonsOnly.filter(l => progressMap[l.id]).length;
-  const isComplete = lessonsOnly.length > 0 && doneCount >= lessonsOnly.length;
-
-  if (isComplete){
-    examLinkEl.textContent = '🏆 Examen Final de Práctica';
-    examLinkEl.classList.remove('locked-nav');
-  } else {
-    examLinkEl.textContent = `🔒 Examen Final (${doneCount}/${lessonsOnly.length} lecciones)`;
-    examLinkEl.classList.add('locked-nav');
-  }
+  examLinkEl.textContent = '📝 Exámenes';
+  examLinkEl.classList.remove('locked-nav');
 }
-
-document.getElementById('examLink').addEventListener('click', (e) => {
-  if (document.getElementById('examLink').classList.contains('locked-nav')){
-    e.preventDefault();
-    alert('Todavía te faltan lecciones por completar. Termina todas las clases del curso para desbloquear el examen final.');
-  }
-});
 
 window.selectItem = function(idx){
   activeItemIndex = idx;

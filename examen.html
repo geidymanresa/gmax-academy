@@ -246,19 +246,39 @@ async function init(){
 }
 
 // ============================================================================
-// Progreso de lecciones del curso (para desbloquear el examen final)
+// Condición para desbloquear el(los) examen(es) final(es): haber aprobado,
+// al menos una vez, el examen de CADA capítulo (no depende de lecciones).
 // ============================================================================
-async function checkLessonCompletion(){
-  const { data: chapters } = await sb.from('chapters').select('id, lessons(id, content_type)').eq('course_id', courseId);
-  const lessonIds = (chapters || []).flatMap(ch => (ch.lessons || []).filter(l => l.content_type !== 'chapter_exam').map(l => l.id));
-  if (lessonIds.length === 0) return { total: 0, done: 0, complete: true };
-  const { data: progress } = await sb.from('lesson_progress').select('lesson_id').eq('user_id', currentUser.id).eq('completed', true).in('lesson_id', lessonIds);
-  const done = (progress || []).length;
-  return { total: lessonIds.length, done, complete: done >= lessonIds.length };
+function checkChapterExamsUnlock(){
+  const chapterConfigs = examConfigs.filter(c => c.config_type === 'chapter_quiz');
+  if (chapterConfigs.length === 0){
+    return { unlocked: false, chapterConfigs, missing: [] };
+  }
+  const missing = chapterConfigs.filter(c => {
+    const st = myStatsByConfig[c.id];
+    return !(st && st.passedCount > 0);
+  });
+  return { unlocked: missing.length === 0, chapterConfigs, missing };
 }
 
-function finalCardHtml(finalConfig){
+function finalCardHtml(finalConfig, unlockInfo){
   const stats = myStatsByConfig[finalConfig.id];
+
+  if (unlockInfo && !unlockInfo.unlocked){
+    const missingHtml = unlockInfo.chapterConfigs.length === 0
+      ? 'Todavía no hay exámenes de capítulo configurados para este curso.'
+      : `Te falta aprobar: ${unlockInfo.missing.map(c => escapeHtml(c.title)).join(', ')}.`;
+    return `
+      <div class="final-card">
+        <h3>🔒 ${escapeHtml(finalConfig.title)}</h3>
+        <div class="meta">${finalConfig.question_count} preguntas · ${finalConfig.duration_minutes} minutos de cronómetro · ${finalConfig.passing_score}% para aprobar</div>
+        <div class="mode-box" style="max-width:none;">
+          <h4>Todavía no disponible</h4>
+          <p>Para acceder a este examen debes haber aprobado, al menos una vez, todos los exámenes de cada capítulo.<br><br>${missingHtml}</p>
+        </div>
+      </div>`;
+  }
+
   return `
       <div class="final-card">
         <h3>🏆 ${escapeHtml(finalConfig.title)}</h3>
@@ -289,14 +309,15 @@ function renderHub(){
   document.getElementById('timerBox').innerHTML = '';
   const chapterConfigs = examConfigs.filter(c => c.config_type === 'chapter_quiz').sort((a,b)=>a.chapter_number-b.chapter_number);
   const finalConfig = examConfigs.find(c => c.config_type === 'final_exam');
+  const unlockInfo = checkChapterExamsUnlock();
 
   let html = `
     <div class="hub-head">
       <h1>Exámenes de práctica</h1>
-      <p>Pon a prueba lo aprendido en cada capítulo, y cuando estés listo(a), toma el examen final de práctica completo.</p>
+      <p>Pon a prueba lo aprendido en cada capítulo. El examen final se desbloquea cuando hayas aprobado, al menos una vez, el examen de cada capítulo.</p>
     </div>`;
 
-  if (finalConfig) html += finalCardHtml(finalConfig);
+  if (finalConfig) html += finalCardHtml(finalConfig, unlockInfo);
 
   html += `<h3 style="font-size:15px;color:var(--navy);margin-bottom:12px;">Exámenes por capítulo</h3>`;
   chapterConfigs.forEach(c => {
@@ -325,14 +346,16 @@ async function renderFinalOnly(){
     return;
   }
 
-  document.getElementById('wrap').innerHTML = '<div class="empty-note">Verificando tu progreso...</div>';
-  const completion = await checkLessonCompletion();
-  if (!completion.complete){
+  const unlockInfo = checkChapterExamsUnlock();
+  if (!unlockInfo.unlocked){
+    const missingHtml = unlockInfo.chapterConfigs.length === 0
+      ? 'Todavía no hay exámenes de capítulo configurados para este curso.'
+      : `Te falta aprobar: ${unlockInfo.missing.map(c => escapeHtml(c.title)).join(', ')}.`;
     document.getElementById('wrap').innerHTML = `
       <div class="empty-note">
-        🔒 Todavía no has completado todas las lecciones del curso.<br>
-        Llevas ${completion.done} de ${completion.total}. Termina las que faltan para desbloquear el examen final.<br><br>
-        <a href="dashboard.html?course=${courseId}" class="btn primary" style="display:inline-flex;">← Volver al curso</a>
+        🔒 Para acceder al examen final debes haber aprobado, al menos una vez, todos los exámenes de cada capítulo.<br>
+        ${missingHtml}<br><br>
+        <a href="examen.html?course=${courseId}" class="btn primary" style="display:inline-flex;">Ver exámenes por capítulo</a>
       </div>`;
     return;
   }
@@ -340,9 +363,9 @@ async function renderFinalOnly(){
   document.getElementById('wrap').innerHTML = `
     <div class="hub-head">
       <h1>Examen Final de Práctica</h1>
-      <p>¡Completaste todas las lecciones! Ya puedes tomar el examen final de 150 preguntas.</p>
+      <p>¡Aprobaste todos los exámenes de capítulo! Ya puedes tomar el examen final de 150 preguntas.</p>
     </div>
-    ${finalCardHtml(finalConfig)}`;
+    ${finalCardHtml(finalConfig, unlockInfo)}`;
 }
 
 function escapeHtml(str){
