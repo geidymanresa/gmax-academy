@@ -527,6 +527,23 @@
   </div>
 </div>
 
+<!-- MODAL: LISTA DE ESPERA DE UN CURSO -->
+<div class="modal-overlay" id="waitlistModal">
+  <div class="modal" style="max-width:600px;">
+    <h2 id="waitlistModalTitle">Lista de espera</h2>
+    <p style="font-size:13px;color:var(--slate);margin-bottom:14px;" id="waitlistModalCount">—</p>
+    <div style="max-height:55vh;overflow-y:auto;">
+      <table>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Fecha</th></tr></thead>
+        <tbody id="waitlistModalBody"><tr><td colspan="4" class="empty-state">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelWaitlistBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -693,13 +710,22 @@ async function loadCourses(){
     return;
   }
   const rows = await Promise.all(courses.map(async c => {
-    const { count } = await sb.from('enrollments').select('*', {count:'exact', head:true}).eq('course_id', c.id);
+    let inscritosCell, waitlistBtn = '';
+    if (c.status === 'coming_soon'){
+      const { count: wlCount } = await sb.from('leads').select('*', {count:'exact', head:true}).eq('source','course_waitlist').eq('source_detail', c.id);
+      inscritosCell = `<span title="Personas en lista de espera">🕒 ${wlCount ?? 0} en espera</span>`;
+      waitlistBtn = `<button class="btn btn-ghost btn-sm" onclick="openCourseWaitlist('${c.id}','${c.title.replace(/'/g,"\\'")}')">Ver lista de espera</button>`;
+    } else {
+      const { count } = await sb.from('enrollments').select('*', {count:'exact', head:true}).eq('course_id', c.id);
+      inscritosCell = count ?? 0;
+    }
     return `<tr>
       <td><b>${c.title}</b></td>
       <td>$${(c.price_cents/100).toFixed(0)}</td>
       <td><span class="badge badge-${c.status}">${statusLabel(c.status)}</span></td>
-      <td>${count ?? 0}</td>
+      <td>${inscritosCell}</td>
       <td style="text-align:right;white-space:nowrap;">
+        ${waitlistBtn}
         <button class="btn btn-ghost btn-sm" onclick="window.open('dashboard.html?preview='+'${c.id}','_blank')">Vista previa</button>
         <button class="btn btn-ghost btn-sm" onclick="editCourse('${c.id}')">Editar</button>
         <button class="btn btn-sm ${c.status==='published' ? 'btn-danger' : 'btn-gold'}" onclick="toggleCourseStatus('${c.id}','${c.status}')">${c.status==='published' ? 'Despublicar' : 'Publicar'}</button>
@@ -720,6 +746,34 @@ async function toggleCourseStatus(id, currentStatus){
 
 // ---- Course modal: open/close ----
 const courseModal = document.getElementById('courseModal');
+const waitlistModal = document.getElementById('waitlistModal');
+document.getElementById('cancelWaitlistBtn').addEventListener('click', ()=> waitlistModal.classList.remove('open'));
+
+async function openCourseWaitlist(courseId, courseTitle){
+  document.getElementById('waitlistModalTitle').textContent = 'Lista de espera — ' + courseTitle;
+  document.getElementById('waitlistModalCount').textContent = 'Cargando...';
+  document.getElementById('waitlistModalBody').innerHTML = '<tr><td colspan="4" class="empty-state">Cargando...</td></tr>';
+  waitlistModal.classList.add('open');
+  const { data: rows, error } = await sb.from('leads')
+    .select('full_name, email, phone, created_at')
+    .eq('source', 'course_waitlist')
+    .eq('source_detail', courseId)
+    .order('created_at', { ascending: false });
+  const countEl = document.getElementById('waitlistModalCount');
+  const body = document.getElementById('waitlistModalBody');
+  if (error || !rows || rows.length === 0){
+    countEl.textContent = '0 personas inscritas todavía.';
+    body.innerHTML = '<tr><td colspan="4" class="empty-state">Todavía nadie se ha anotado.</td></tr>';
+    return;
+  }
+  countEl.textContent = rows.length + (rows.length === 1 ? ' persona inscrita.' : ' personas inscritas.');
+  body.innerHTML = rows.map(l => `<tr>
+    <td>${l.full_name || '—'}</td>
+    <td>${l.email || '—'}</td>
+    <td>${l.phone || '—'}</td>
+    <td>${new Date(l.created_at).toLocaleDateString('es-MX', {year:'numeric',month:'short',day:'numeric'})}</td>
+  </tr>`).join('');
+}
 document.getElementById('newCourseBtn').addEventListener('click', ()=> openCourseModal());
 document.getElementById('cancelCourseBtn').addEventListener('click', ()=> courseModal.classList.remove('open'));
 

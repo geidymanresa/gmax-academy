@@ -762,8 +762,10 @@
             </div>
             <button class="btn btn-ghost btn-sm" onclick="toggleWaitlistForm('${c.id}')">Notificarme al lanzar</button>
             <div class="waitlist-form" id="wf-${c.id}">
-              <input type="text" id="wfName-${c.id}" placeholder="Tu nombre">
-              <input type="email" id="wfEmail-${c.id}" placeholder="Tu correo electrónico">
+              <input type="text" id="wfFirstName-${c.id}" placeholder="Nombre">
+              <input type="text" id="wfLastName-${c.id}" placeholder="Apellido">
+              <input type="email" id="wfEmail-${c.id}" placeholder="Correo electrónico">
+              <input type="tel" id="wfPhone-${c.id}" placeholder="Teléfono">
               <button type="button" class="btn btn-gold btn-sm" onclick="submitWaitlist('${c.id}')">Avísenme</button>
               <div class="waitlist-msg" id="wfMsg-${c.id}"></div>
             </div>
@@ -807,17 +809,19 @@
   const LEAD_EMAILS_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/lead-emails';
 
   window.submitWaitlist = async function(courseId){
-    const name = document.getElementById('wfName-' + courseId).value.trim();
+    const firstName = document.getElementById('wfFirstName-' + courseId).value.trim();
+    const lastName = document.getElementById('wfLastName-' + courseId).value.trim();
     const email = document.getElementById('wfEmail-' + courseId).value.trim();
+    const phone = document.getElementById('wfPhone-' + courseId).value.trim();
     const msgEl = document.getElementById('wfMsg-' + courseId);
-    if (!email){ msgEl.textContent = 'Escribe tu correo.'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
+    if (!firstName || !lastName || !email || !phone){ msgEl.textContent = 'Por favor llena todos los campos (nombre, apellido, correo y teléfono).'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
     // Generamos el id nosotros mismos (en vez de pedirle a Supabase que nos
     // devuelva el registro recién creado con .select()), porque leer de vuelta
     // requiere permiso de LECTURA pública sobre la tabla leads, y eso expondría
     // los datos de TODOS los leads (nombre/correo/teléfono) a cualquiera desde
     // la consola del navegador. Así solo hace falta permiso de escritura.
     const newLeadId = crypto.randomUUID();
-    const { error } = await sb.from('leads').insert({ id: newLeadId, full_name: name, email, source: 'course_waitlist', source_detail: courseId });
+    const { error } = await sb.from('leads').insert({ id: newLeadId, full_name: firstName + ' ' + lastName, email, phone, source: 'course_waitlist', source_detail: courseId });
     if (error){ msgEl.textContent = 'Hubo un error, intenta de nuevo.'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
     // Manda el correo de confirmación inmediato ("ya quedaste anotado"). Si
     // este correo falla por lo que sea, no bloqueamos el mensaje de éxito en
