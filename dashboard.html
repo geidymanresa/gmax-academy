@@ -483,7 +483,13 @@ window.selectItem = function(idx){
   if (!isPreviewMode && currentEnrollmentId && item){
     const update = { last_item_key: item.id };
     if (item.type === 'lesson') update.last_lesson_id = item.id;
-    sb.from('enrollments').update(update).eq('id', currentEnrollmentId);
+    sb.from('enrollments').update(update).eq('id', currentEnrollmentId).then(({ error }) => {
+      if (error){
+        console.error('GMAX-DEBUG: NO se pudo guardar el progreso ->', error.message || error, error);
+      } else {
+        console.log('GMAX-DEBUG: progreso guardado correctamente ->', update);
+      }
+    });
   }
 };
 
