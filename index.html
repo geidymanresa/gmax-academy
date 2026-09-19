@@ -1080,7 +1080,7 @@
       coursesList.innerHTML = '<li style="color:var(--slate);font-size:12.5px;padding:10px 0;">Muy pronto vas a ver aquí nuestros cursos.</li>';
     }
 
-    const { data: resources } = await sb.from('free_resources').select('title').eq('status','published').order('created_at',{ascending:false}).limit(3);
+    const { data: resources } = await sb.from('free_resources').select('title').eq('status','published').neq('content_type','video').order('created_at',{ascending:false}).limit(3);
     const resourcesList = document.getElementById('ovResourcesList');
     if (resources && resources.length){
       resourcesList.innerHTML = resources.map(r => `<li><a href="#recursos">${r.title} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a></li>`).join('');
