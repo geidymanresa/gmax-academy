@@ -540,8 +540,21 @@ async function renderMain(item){
   const done = isRealLesson && progressMap[item.id];
   const contentType = item.content_type || 'video';
 
-  const linksHtml = (item.resource_links && item.resource_links.length)
-    ? `<div class="links-card"><h3>Recursos de esta clase</h3>${item.resource_links.map(l => `<a href="${l.url}" target="_blank">${resourceIcon(l.rtype)} ${l.label || l.url}</a>`).join('')}</div>`
+  // Los recursos de tipo "imagen" se muestran grandes, como si fueran el
+  // contenido principal (igual que una lección de tipo Imagen) — no como un
+  // link chiquito en la lista de descargas. El resto de los recursos (links,
+  // documentos) se siguen mostrando en la lista de "Recursos de esta clase".
+  const imageResources = (item.resource_links || []).filter(l => l.rtype === 'image' && l.url);
+  const otherResources = (item.resource_links || []).filter(l => !(l.rtype === 'image' && l.url));
+
+  const imagesHtml = imageResources.map(l => `
+    <div style="border-radius:16px;overflow:hidden;margin-bottom:20px;">
+      <img src="${l.url}" style="width:100%;display:block;">
+      ${l.label ? `<p style="font-size:12.5px;color:var(--slate);margin-top:6px;">${l.label}</p>` : ''}
+    </div>`).join('');
+
+  const linksHtml = otherResources.length
+    ? `<div class="links-card"><h3>Recursos de esta clase</h3>${otherResources.map(l => `<a href="${l.url}" target="_blank">${resourceIcon(l.rtype)} ${l.label || l.url}</a>`).join('')}</div>`
     : '';
 
   const completeBadgeHtml = (isRealLesson && contentType !== 'quiz' && done)
@@ -574,7 +587,7 @@ async function renderMain(item){
   if (contentType === 'quiz'){
     main.innerHTML = `
       <div class="lesson-head"><h1>${item.title}</h1></div>
-      <p class="lesson-desc">${item.description || ''}</p>
+      <div class="lesson-desc">${item.description || ''}</div>
       <div id="quizArea"><div class="empty-course">Cargando cuestionario...</div></div>
       ${navButtonsHtml}
     `;
@@ -586,7 +599,7 @@ async function renderMain(item){
     const chapterNum = item.video_url;
     main.innerHTML = `
       <div class="lesson-head"><h1>${item.title}</h1></div>
-      <p class="lesson-desc">${item.description || ''}</p>
+      <div class="lesson-desc">${item.description || ''}</div>
       <div class="links-card" style="text-align:center;padding:38px 24px;">
         <div style="font-size:32px;margin-bottom:10px;">📝</div>
         <h3 style="margin-bottom:8px;">Examen de práctica — Capítulo ${chapterNum}</h3>
@@ -605,7 +618,8 @@ async function renderMain(item){
       ${completeBadgeHtml}
     </div>
     ${contentType === 'text' ? `<div class="lesson-desc" style="font-size:15px;">${item.text_content || 'Contenido no disponible todavía.'}</div>` : ''}
-    <p class="lesson-desc">${item.description || (contentType==='text' ? '' : 'Sin descripción todavía.')}</p>
+    <div class="lesson-desc">${item.description || (contentType==='text' ? '' : 'Sin descripción todavía.')}</div>
+    ${imagesHtml}
     ${linksHtml}
     ${navButtonsHtml}
   `;

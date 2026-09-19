@@ -109,7 +109,6 @@
   .lesson-controls-row{display:flex;gap:8px;align-items:center;}
   .lesson-card .lesson-video{flex:2;}
   .lesson-type{flex:none;width:130px;font-size:12.5px;padding:8px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;}
-  .lesson-card textarea.lesson-desc{width:100%;font-size:12.5px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;min-height:44px;margin-bottom:8px;font-family:'Inter',sans-serif;}
   .rt-toolbar{display:flex;gap:4px;margin-bottom:4px;}
   .rt-toolbar button{border:1.5px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 9px;font-size:12px;font-weight:700;}
   .rt-toolbar button:hover{background:#EAF0FB;}
@@ -1165,7 +1164,15 @@ function addLessonRowEl(list, l){
       <label style="font-family:'Sora',sans-serif;font-size:11.5px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;">Tipo de clase</label>
       <select class="lesson-type" onchange="onLessonTypeChange(this)" style="margin-bottom:10px;">${typeOptions}</select>
 
-      <textarea class="lesson-desc" placeholder="Descripción corta de la lección (opcional, se muestra siempre)">${escapeHtml(l.description||'')}</textarea>
+      <label style="font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;">Descripción (opcional, se muestra siempre debajo del contenido)</label>
+      <div class="richtext-wrap">
+        <div class="rt-toolbar">
+          <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
+          <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
+          <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+        </div>
+        <div class="lesson-richtext lesson-desc-richtext" contenteditable="true">${l.description || ''}</div>
+      </div>
       <div class="lesson-links-label">Recursos asociados a esta clase (links, documentos o imágenes)</div>
       <div class="links-list">${linksHtml}</div>
       <button type="button" class="add-link" style="font-size:11.5px;" onclick="addLinkRow(this)">+ Agregar recurso</button>
@@ -1394,7 +1401,48 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     if (courseId){
       const { error } = await sb.from('courses').update(payload).eq('id', courseId);
       if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
-      await sb.from('chapters').delete().eq('course_id', courseId);
+
+      // Borra TODO el contenido viejo del curso (capítulos, lecciones y
+      // cuestionarios) antes de volver a crearlo desde el formulario.
+      // Se hace explícito, tabla por tabla, revisando el error de cada
+      // paso — en vez de confiar en que borrar "chapters" arrastre en
+      // cascada a las demás — para que si algo no se puede borrar (por
+      // ejemplo, por un permiso que falte), se vea el error de verdad en
+      // vez de quedar contenido duplicado sin que nadie se dé cuenta.
+      const { data: oldChapters, error: oldChErr } = await sb.from('chapters').select('id').eq('course_id', courseId);
+      if (oldChErr){ msgEl.textContent = 'Error al leer los capítulos existentes: ' + oldChErr.message; msgEl.className='msg-inline error show'; return; }
+      const oldChapterIds = (oldChapters || []).map(c => c.id);
+
+      if (oldChapterIds.length){
+        const { data: oldLessons, error: oldLErr } = await sb.from('lessons').select('id').in('chapter_id', oldChapterIds);
+        if (oldLErr){ msgEl.textContent = 'Error al leer las lecciones existentes: ' + oldLErr.message; msgEl.className='msg-inline error show'; return; }
+        const oldLessonIds = (oldLessons || []).map(l => l.id);
+
+        if (oldLessonIds.length){
+          const { data: oldQuizzes, error: oldQzErr } = await sb.from('quizzes').select('id').in('lesson_id', oldLessonIds);
+          if (oldQzErr){ msgEl.textContent = 'Error al leer los cuestionarios existentes: ' + oldQzErr.message; msgEl.className='msg-inline error show'; return; }
+          const oldQuizIds = (oldQuizzes || []).map(q => q.id);
+
+          if (oldQuizIds.length){
+            const { data: oldQuestions, error: oldQErr } = await sb.from('quiz_questions').select('id').in('quiz_id', oldQuizIds);
+            if (oldQErr){ msgEl.textContent = 'Error al leer las preguntas existentes: ' + oldQErr.message; msgEl.className='msg-inline error show'; return; }
+            const oldQuestionIds = (oldQuestions || []).map(q => q.id);
+
+            if (oldQuestionIds.length){
+              const { error: delOptErr } = await sb.from('quiz_options').delete().in('question_id', oldQuestionIds);
+              if (delOptErr){ msgEl.textContent = 'Error al borrar opciones de cuestionarios viejos: ' + delOptErr.message; msgEl.className='msg-inline error show'; return; }
+            }
+            const { error: delQErr } = await sb.from('quiz_questions').delete().in('quiz_id', oldQuizIds);
+            if (delQErr){ msgEl.textContent = 'Error al borrar preguntas de cuestionarios viejos: ' + delQErr.message; msgEl.className='msg-inline error show'; return; }
+          }
+          const { error: delQuizErr } = await sb.from('quizzes').delete().in('lesson_id', oldLessonIds);
+          if (delQuizErr){ msgEl.textContent = 'Error al borrar cuestionarios viejos: ' + delQuizErr.message; msgEl.className='msg-inline error show'; return; }
+        }
+        const { error: delLessonErr } = await sb.from('lessons').delete().in('chapter_id', oldChapterIds);
+        if (delLessonErr){ msgEl.textContent = 'Error al borrar lecciones viejas: ' + delLessonErr.message; msgEl.className='msg-inline error show'; return; }
+      }
+      const { error: delChErr } = await sb.from('chapters').delete().eq('course_id', courseId);
+      if (delChErr){ msgEl.textContent = 'Error al borrar capítulos viejos: ' + delChErr.message; msgEl.className='msg-inline error show'; return; }
     } else {
       const { data, error } = await sb.from('courses').insert(payload).select().single();
       if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
@@ -1412,7 +1460,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         const lType = card.querySelector('.lesson-type').value;
         const lVideo = card.querySelector('.lesson-video').value.trim();
         const lExamChapter = card.querySelector('.lesson-examchapter') ? card.querySelector('.lesson-examchapter').value : '';
-        const lDesc = card.querySelector('.lesson-desc').value.trim();
+        const lDesc = card.querySelector('.lesson-desc-richtext') ? card.querySelector('.lesson-desc-richtext').innerHTML.trim() : '';
         const lRichtext = card.querySelector('.lesson-richtext') ? card.querySelector('.lesson-richtext').innerHTML.trim() : '';
         if (!lTitle) continue;
         const links = [...card.querySelectorAll('.link-row')].map(r => ({
