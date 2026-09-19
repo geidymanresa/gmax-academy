@@ -1135,9 +1135,13 @@ function addLessonRowEl(list, l){
     </div>
 
     <div class="lesson-detail">
-      <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
-        value="${escapeHtml(type==='chapter_exam' ? '' : (l.video_url||''))}"
-        style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;${type==='text'||type==='quiz'||type==='chapter_exam'?'display:none;':''}">
+      <div class="lesson-video-row" style="display:${(type==='text'||type==='quiz'||type==='chapter_exam')?'none':'flex'};gap:6px;margin-bottom:8px;align-items:center;">
+        <input type="text" class="lesson-video" placeholder="${TYPE_LABELS[type].placeholder}"
+          value="${escapeHtml(type==='chapter_exam' ? '' : (l.video_url||''))}"
+          style="flex:1;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;">
+        <button type="button" class="upload-file-btn lesson-main-upload-btn" style="${(type==='image'||type==='document')?'display:inline-flex;':'display:none;'}" onclick="triggerMainFileUpload(this)" title="Subir archivo desde tu computadora">📤 Subir</button>
+        <input type="file" class="hidden-file-input lesson-main-hidden-input" style="display:none;" onchange="uploadMainLessonFile(this)">
+      </div>
 
       <div class="richtext-wrap" style="${type==='text'?'':'display:none;'}">
         <div class="rt-toolbar">
@@ -1197,15 +1201,18 @@ function quizSummaryText(quiz){
 window.onLessonTypeChange = function(select){
   const card = select.closest('.lesson-card');
   const type = select.value;
+  const videoRow = card.querySelector('.lesson-video-row');
   const videoInput = card.querySelector('.lesson-video');
+  const mainUploadBtn = card.querySelector('.lesson-main-upload-btn');
   const richtextWrap = card.querySelector('.richtext-wrap');
   const quizField = card.querySelector('.quiz-builder-field:not(.lesson-examchapter-field)');
   const examChapterField = card.querySelector('.lesson-examchapter-field');
   const icon = card.querySelector('.lesson-type-icon');
 
   icon.textContent = TYPE_LABELS[type].icon;
-  videoInput.style.display = (type==='text'||type==='quiz'||type==='chapter_exam') ? 'none' : 'block';
+  videoRow.style.display = (type==='text'||type==='quiz'||type==='chapter_exam') ? 'none' : 'flex';
   videoInput.placeholder = TYPE_LABELS[type].placeholder;
+  mainUploadBtn.style.display = (type==='image'||type==='document') ? 'inline-flex' : 'none';
   richtextWrap.style.display = type==='text' ? 'block' : 'none';
   quizField.style.display = type==='quiz' ? 'flex' : 'none';
   examChapterField.style.display = type==='chapter_exam' ? 'flex' : 'none';
@@ -1262,6 +1269,40 @@ window.uploadResourceFile = async function(fileInput){
   const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
   urlInput.value = pub.publicUrl;
   if (!labelInput.value.trim()) labelInput.value = file.name;
+
+  uploadBtn.textContent = '✓ Subido';
+  uploadBtn.disabled = false;
+  toast('Archivo subido ✓');
+};
+
+window.triggerMainFileUpload = function(btn){
+  const row = btn.closest('.lesson-video-row');
+  row.querySelector('.lesson-main-hidden-input').click();
+};
+
+window.uploadMainLessonFile = async function(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return;
+  const row = fileInput.closest('.lesson-video-row');
+  const urlInput = row.querySelector('.lesson-video');
+  const uploadBtn = row.querySelector('.lesson-main-upload-btn');
+
+  uploadBtn.textContent = '⏳ Subiendo...';
+  uploadBtn.disabled = true;
+
+  const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `lessons/${Date.now()}-${cleanName}`;
+
+  const { error } = await sb.storage.from('course-resources').upload(path, file);
+  if (error){
+    toast('Error subiendo el archivo: ' + error.message, true);
+    uploadBtn.textContent = '📤 Subir';
+    uploadBtn.disabled = false;
+    return;
+  }
+
+  const { data: pub } = sb.storage.from('course-resources').getPublicUrl(path);
+  urlInput.value = pub.publicUrl;
 
   uploadBtn.textContent = '✓ Subido';
   uploadBtn.disabled = false;
