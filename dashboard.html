@@ -349,7 +349,10 @@ async function loadEnrollments(){
   document.getElementById('app').classList.add('ready');
   document.getElementById('courseName').textContent = currentCourse.title;
 
-  await loadCourseContent(enrollments[0].last_lesson_id);
+  // Prefiere "last_item_key" (guarda EXACTAMENTE dónde se quedó, incluyendo
+  // el Video de Bienvenida o el de Despedida); si no existe (estudiantes con
+  // progreso guardado antes de este cambio), usa la columna vieja.
+  await loadCourseContent(enrollments[0].last_item_key || enrollments[0].last_lesson_id);
 }
 
 async function loadCourseContent(lastLessonId){
@@ -472,10 +475,15 @@ window.selectItem = function(idx){
   renderMain(allLessons[idx]);
   closeMobileSidebar();
 
-  // Guarda automáticamente hasta dónde llegó (no aplica en modo vista previa)
+  // Guarda automáticamente hasta dónde llegó (no aplica en modo vista previa).
+  // Se guarda SIEMPRE, sin importar si es el Video de Bienvenida, una lección
+  // real, o el Video de Despedida — así la próxima vez retoma exactamente
+  // donde se quedó, no solo cuando llegó a una lección.
   const item = allLessons[idx];
-  if (!isPreviewMode && currentEnrollmentId && item && item.type === 'lesson'){
-    sb.from('enrollments').update({ last_lesson_id: item.id }).eq('id', currentEnrollmentId);
+  if (!isPreviewMode && currentEnrollmentId && item){
+    const update = { last_item_key: item.id };
+    if (item.type === 'lesson') update.last_lesson_id = item.id;
+    sb.from('enrollments').update(update).eq('id', currentEnrollmentId);
   }
 };
 
