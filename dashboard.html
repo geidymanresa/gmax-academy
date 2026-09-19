@@ -361,11 +361,25 @@ async function loadCourseContent(lastLessonId){
     .eq('course_id', currentCourse.id)
     .order('position');
 
+  const introChapter = (chapters||[]).find(ch => ch.is_intro);
+  const regularChapters = (chapters||[]).filter(ch => !ch.is_intro);
+
   allLessons = [];
-  if (currentCourse.intro_video_url){
+
+  // Sección "Introducción": se arma igual que un capítulo normal (puede tener
+  // varias pantallas — video, texto, etc.), pero NO cuenta en la numeración
+  // de capítulos y se muestra siempre primero. Si el curso todavía no tiene
+  // este capítulo especial armado, se usa el campo viejo de un solo video +
+  // texto, por compatibilidad con cursos que no se hayan actualizado.
+  if (introChapter && introChapter.lessons && introChapter.lessons.length){
+    introChapter.lessons.slice().sort((a,b)=>a.position-b.position).forEach(l => {
+      allLessons.push({ id:l.id, title:l.title, video_url:l.video_url, description:l.description, text_content:l.text_content, content_type:l.content_type||'video', resource_links:l.resource_links||[], type:'lesson', chapterTitle:'Introducción', isIntroSection:true });
+    });
+  } else if (currentCourse.intro_video_url){
     allLessons.push({ id:'intro', title:'Introducción', video_url: currentCourse.intro_video_url, description: currentCourse.intro_text || 'Antes de empezar, mira este mensaje de bienvenida al curso.', resource_links:[], type:'intro' });
   }
-  (chapters||[]).sort((a,b)=>a.position-b.position).forEach(ch => {
+
+  regularChapters.sort((a,b)=>a.position-b.position).forEach(ch => {
     (ch.lessons||[]).sort((a,b)=>a.position-b.position).forEach(l => {
       allLessons.push({ id:l.id, title:l.title, video_url:l.video_url, description:l.description, text_content:l.text_content, content_type:l.content_type||'video', resource_links:l.resource_links||[], type:'lesson', chapterTitle: ch.title });
     });
@@ -408,16 +422,29 @@ function renderSidebar(){
     } else {
       if (item.chapterTitle !== lastChapter){
         if (chapterOpen) html += `</div></div>`;
-        chapterNum++;
         lastChapter = item.chapterTitle;
-        html += `
-          <div class="side-chapter collapsed" id="sidechapter-${chapterNum}">
-            <div class="side-chapter-head" onclick="toggleSideChapter(${chapterNum})">
-              <span class="side-chapter-num">Cap. ${chapterNum}</span>
-              <span class="side-chapter-title">${item.chapterTitle}</span>
-              <span class="side-chapter-arrow">▾</span>
-            </div>
-            <div class="side-chapter-lessons">`;
+        if (item.isIntroSection){
+          // La Introducción se muestra igual que un capítulo (colapsable, con
+          // sus propias pantallas), pero SIN número de capítulo — no cuenta.
+          html += `
+            <div class="side-chapter" id="sidechapter-intro">
+              <div class="side-chapter-head" onclick="toggleSideChapter('intro')">
+                <span class="side-chapter-num">🎬</span>
+                <span class="side-chapter-title">Introducción</span>
+                <span class="side-chapter-arrow">▾</span>
+              </div>
+              <div class="side-chapter-lessons">`;
+        } else {
+          chapterNum++;
+          html += `
+            <div class="side-chapter collapsed" id="sidechapter-${chapterNum}">
+              <div class="side-chapter-head" onclick="toggleSideChapter(${chapterNum})">
+                <span class="side-chapter-num">Cap. ${chapterNum}</span>
+                <span class="side-chapter-title">${item.chapterTitle}</span>
+                <span class="side-chapter-arrow">▾</span>
+              </div>
+              <div class="side-chapter-lessons">`;
+        }
         chapterOpen = true;
       }
       const done = progressMap[item.id];

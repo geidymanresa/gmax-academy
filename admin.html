@@ -378,14 +378,14 @@
       <div class="form-row"><label>Video de despedida (link de Bunny.net)</label><input type="text" id="courseOutroVideo" placeholder="https://..."></div>
     </div>
     <div class="form-row">
-      <label>Texto de introducción (aparece debajo del video de bienvenida, dentro de la sección "Introducción" del curso — NO es un capítulo)</label>
-      <div class="richtext-wrap">
-        <div class="rt-toolbar">
-          <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
-          <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
-          <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+      <label>🎬 Sección "Introducción" (se arma igual que un capítulo — puedes agregarle varias pantallas: video, texto, etc. — pero se muestra aparte, antes del Capítulo 1, SIN contar como capítulo)</label>
+      <div class="chapter-block" id="introChapterBlock" style="border-color:var(--gold-dark);">
+        <div class="ch-head">
+          <button type="button" class="ch-toggle" onclick="this.closest('.chapter-block').classList.toggle('ch-collapsed')" title="Colapsar/expandir">▾</button>
+          <span style="flex:1;font-weight:700;font-family:'Sora',sans-serif;color:var(--navy);">Introducción</span>
         </div>
-        <div class="lesson-richtext" id="courseIntroText" contenteditable="true" style="min-height:140px;"></div>
+        <div class="lessons-list"></div>
+        <button type="button" class="add-link ch-add-lesson" onclick="addLessonRow('introChapterBlock')">+ Agregar pantalla a la Introducción</button>
       </div>
     </div>
     <div class="form-row"><label>Estado</label>
@@ -966,12 +966,33 @@ function openCourseModal(){
   document.getElementById('courseFullDesc').value = '';
   document.getElementById('courseIntroVideo').value = '';
   document.getElementById('courseOutroVideo').value = '';
-  document.getElementById('courseIntroText').innerHTML = '';
+  document.getElementById('introChapterBlock').querySelector('.lessons-list').innerHTML = '';
   document.getElementById('courseStatus').value = 'draft';
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
   document.getElementById('courseMsg').className = 'msg-inline';
   courseModal.classList.add('open');
+}
+
+// Adjunta los datos del cuestionario (si aplica) a cada lección de una lista,
+// para que addLessonRowEl pueda mostrarlos al editar. Se usa tanto para la
+// Introducción como para los capítulos normales.
+async function attachQuizDataToLessons(lessons){
+  for (const l of lessons){
+    if (l.content_type === 'quiz'){
+      const { data: quizRow } = await sb.from('quizzes').select('*, quiz_questions(*, quiz_options(*))').eq('lesson_id', l.id).single();
+      if (quizRow){
+        l.quiz = {
+          passing_score: quizRow.passing_score,
+          questions: (quizRow.quiz_questions || []).map(q => ({
+            question_text: q.question_text,
+            multi_select: (q.quiz_options || []).filter(o=>o.is_correct).length > 1,
+            options: (q.quiz_options || []).map(o => ({ option_text: o.option_text, is_correct: o.is_correct }))
+          }))
+        };
+      }
+    }
+  }
 }
 
 window.editCourse = async function(id){
@@ -988,29 +1009,25 @@ window.editCourse = async function(id){
   document.getElementById('courseFullDesc').value = course.description || '';
   document.getElementById('courseIntroVideo').value = course.intro_video_url || '';
   document.getElementById('courseOutroVideo').value = course.outro_video_url || '';
-  document.getElementById('courseIntroText').innerHTML = course.intro_text || '';
   document.getElementById('courseStatus').value = course.status;
+  document.getElementById('introChapterBlock').querySelector('.lessons-list').innerHTML = '';
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
 
   const { data: chapters } = await sb.from('chapters').select('*, lessons(*)').eq('course_id', id).order('position');
-  for (const ch of (chapters || [])){
+  const introChapterRow = (chapters || []).find(ch => ch.is_intro);
+  const regularChapterRows = (chapters || []).filter(ch => !ch.is_intro);
+
+  if (introChapterRow){
+    const sortedIntroLessons = (introChapterRow.lessons || []).sort((a,b)=>a.position-b.position);
+    await attachQuizDataToLessons(sortedIntroLessons);
+    const introList = document.getElementById('introChapterBlock').querySelector('.lessons-list');
+    sortedIntroLessons.forEach(l => addLessonRowEl(introList, l));
+  }
+
+  for (const ch of regularChapterRows){
     const sortedLessons = (ch.lessons || []).sort((a,b)=>a.position-b.position);
-    for (const l of sortedLessons){
-      if (l.content_type === 'quiz'){
-        const { data: quizRow } = await sb.from('quizzes').select('*, quiz_questions(*, quiz_options(*))').eq('lesson_id', l.id).single();
-        if (quizRow){
-          l.quiz = {
-            passing_score: quizRow.passing_score,
-            questions: (quizRow.quiz_questions || []).map(q => ({
-              question_text: q.question_text,
-              multi_select: (q.quiz_options || []).filter(o=>o.is_correct).length > 1,
-              options: (q.quiz_options || []).map(o => ({ option_text: o.option_text, is_correct: o.is_correct }))
-            }))
-          };
-        }
-      }
-    }
+    await attachQuizDataToLessons(sortedLessons);
     addChapterBlock(ch.title, sortedLessons);
   }
 
@@ -1359,7 +1376,6 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const thumbnail = document.getElementById('courseThumbnail').value.trim();
     const introVideo = document.getElementById('courseIntroVideo').value.trim();
     const outroVideo = document.getElementById('courseOutroVideo').value.trim();
-    const introText = document.getElementById('courseIntroText').innerHTML.trim();
     const status = document.getElementById('courseStatus').value;
 
     const msgEl = document.getElementById('courseMsg');
@@ -1371,7 +1387,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const payload = {
       title, slug, price_cents: Math.round(price*100), access_days: accessDays,
       short_description: shortDesc, description: fullDesc, thumbnail_url: thumbnail,
-      intro_video_url: introVideo, outro_video_url: outroVideo, intro_text: introText, status,
+      intro_video_url: introVideo, outro_video_url: outroVideo, status,
       created_by: currentUser.id
     };
 
@@ -1385,20 +1401,10 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
       courseId = data.id;
     }
 
-    const chapterBlocks = document.querySelectorAll('#chaptersContainer .chapter-block');
-    let chPos = 0;
-    let hadError = false;
-    for (const block of chapterBlocks){
-      const chTitle = block.querySelector('.ch-title').value.trim();
-      if (!chTitle) continue;
-      const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
-      if (chErr){
-        msgEl.textContent = 'Error al guardar el capítulo "' + chTitle + '": ' + chErr.message;
-        msgEl.className='msg-inline error show';
-        hadError = true;
-        break;
-      }
-      chPos++;
+    // Guarda todas las "pantallas" (lecciones) de un capítulo (o de la
+    // Introducción) ya insertado en la base de datos. Devuelve true si todo
+    // salió bien, o false si hubo un error (y ya dejó el mensaje en msgEl).
+    async function saveLessonCardsForChapter(chapterId, block){
       let lessonPos = 0;
       const lessonCards = block.querySelectorAll('.lesson-card');
       for (const card of lessonCards){
@@ -1420,7 +1426,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         else if (lType === 'chapter_exam') lVideoToSave = lExamChapter;
 
         const { data: lessonRow, error: lErr } = await sb.from('lessons').insert({
-          chapter_id: chData.id, title: lTitle,
+          chapter_id: chapterId, title: lTitle,
           video_url: lVideoToSave,
           text_content: lType==='text' ? lRichtext : null,
           description: lDesc, resource_links: links,
@@ -1430,8 +1436,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
         if (lErr){
           msgEl.textContent = 'Error al guardar la lección "' + lTitle + '": ' + lErr.message + ' — Tus datos NO se perdieron, siguen en el formulario. Corrige el error e intenta guardar de nuevo.';
           msgEl.className='msg-inline error show';
-          hadError = true;
-          break;
+          return false;
         }
 
         // Si es cuestionario, guarda la pregunta y opciones
@@ -1444,27 +1449,72 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
             if (qErr){
               msgEl.textContent = 'Error al guardar el cuestionario de "' + lTitle + '": ' + qErr.message;
               msgEl.className='msg-inline error show';
-              hadError = true;
-              break;
+              return false;
             }
             let qPos = 0;
             for (const q of quizData.questions){
               const { data: questionRow, error: questionErr } = await sb.from('quiz_questions').insert({
                 quiz_id: quizRow.id, question_text: q.question_text, position: qPos
               }).select().single();
-              if (questionErr){ hadError = true; break; }
+              if (questionErr){
+                msgEl.textContent = 'Error al guardar una pregunta del cuestionario de "' + lTitle + '".';
+                msgEl.className='msg-inline error show';
+                return false;
+              }
               qPos++;
               const optionsPayload = q.options.map(o => ({ question_id: questionRow.id, option_text: o.option_text, is_correct: o.is_correct }));
               const { error: optErr } = await sb.from('quiz_options').insert(optionsPayload);
-              if (optErr){ hadError = true; break; }
+              if (optErr){
+                msgEl.textContent = 'Error al guardar las opciones del cuestionario de "' + lTitle + '".';
+                msgEl.className='msg-inline error show';
+                return false;
+              }
             }
           }
         }
-        if (hadError) break;
 
         lessonPos++;
       }
-      if (hadError) break;
+      return true;
+    }
+
+    let hadError = false;
+
+    // ---- Introducción: capítulo especial, se guarda aparte y NO cuenta en
+    // la numeración de capítulos. Solo se crea si de verdad tiene contenido
+    // (al menos una pantalla con título) — si la dejó vacía, no se crea nada.
+    const introBlock = document.getElementById('introChapterBlock');
+    const introHasContent = [...introBlock.querySelectorAll('.lesson-card')]
+      .some(c => c.querySelector('.lesson-title').value.trim());
+    if (introHasContent){
+      const { data: introChData, error: introChErr } = await sb.from('chapters')
+        .insert({ course_id: courseId, title: 'Introducción', position: -1, is_intro: true })
+        .select().single();
+      if (introChErr){
+        msgEl.textContent = 'Error al guardar la Introducción: ' + introChErr.message;
+        msgEl.className='msg-inline error show';
+        hadError = true;
+      } else {
+        const ok = await saveLessonCardsForChapter(introChData.id, introBlock);
+        if (!ok) hadError = true;
+      }
+    }
+
+    const chapterBlocks = hadError ? [] : document.querySelectorAll('#chaptersContainer .chapter-block');
+    let chPos = 0;
+    for (const block of chapterBlocks){
+      const chTitle = block.querySelector('.ch-title').value.trim();
+      if (!chTitle) continue;
+      const { data: chData, error: chErr } = await sb.from('chapters').insert({ course_id: courseId, title: chTitle, position: chPos }).select().single();
+      if (chErr){
+        msgEl.textContent = 'Error al guardar el capítulo "' + chTitle + '": ' + chErr.message;
+        msgEl.className='msg-inline error show';
+        hadError = true;
+        break;
+      }
+      chPos++;
+      const ok = await saveLessonCardsForChapter(chData.id, block);
+      if (!ok){ hadError = true; break; }
     }
 
     if (hadError){
