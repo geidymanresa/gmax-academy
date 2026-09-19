@@ -31,6 +31,22 @@
   .who-name{font-size:13.5px;color:#C6D2E8;}
   .logout-link{font-size:13px;color:#B7C2DA;font-weight:600;background:rgba(255,255,255,.08);padding:9px 16px;border-radius:8px;border:none;cursor:pointer;}
 
+  .account-menu-wrap{position:relative;}
+  .account-trigger{background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:13.5px;color:#C6D2E8;padding:8px 10px;border-radius:8px;}
+  .account-trigger:hover{background:rgba(255,255,255,.08);}
+  .account-trigger .caret{font-size:9px;color:#8C9AB8;transition:transform .15s;}
+  .account-trigger.open .caret{transform:rotate(180deg);}
+  .account-dropdown{display:none;position:absolute;top:calc(100% + 10px);right:0;width:260px;background:#fff;border-radius:14px;box-shadow:0 16px 40px rgba(15,36,71,.28);padding:8px;z-index:300;text-align:left;}
+  .account-dropdown.open{display:block;}
+  .acc-panel-title{font-size:12px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.03em;padding:8px 10px 6px;}
+  .acc-menu-item{display:block;width:100%;text-align:left;background:none;border:none;padding:12px 10px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;}
+  .acc-menu-item:hover{background:var(--bg);}
+  .acc-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:12px;cursor:pointer;padding:6px 6px 10px;}
+  .acc-panel h4{font-size:13.5px;font-weight:700;color:var(--navy);margin:0 6px 10px;}
+  .acc-panel-body{padding:0 6px 6px;}
+  .acc-panel-body input{width:100%;padding:10px 12px;margin-bottom:8px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;}
+  .acc-panel-body .btn{width:100%;padding:10px;font-size:12.5px;}
+
   .hero-greet{padding:36px 0 8px;}
   .hero-greet h1{font-size:26px;font-weight:800;color:var(--navy);}
   .hero-greet p{color:var(--slate);font-size:14.5px;margin-top:4px;}
@@ -57,12 +73,7 @@
   .days-chip.soon{background:#FBF0D9;color:#8A6300;}
   .days-chip.urgent{background:#FCE9E9;color:#D64545;}
 
-  .account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-  .account-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;}
-  .account-card h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
   .account-hint{font-size:12px;color:var(--slate);margin-bottom:10px;}
-  .account-card input{width:100%;padding:11px 13px;margin-bottom:10px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:'Inter',sans-serif;}
-  .account-card .btn{width:100%;}
   .btn-link{background:none;border:none;color:var(--blue);font-weight:600;font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:auto;}
   .account-msg{font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:10px;display:none;}
   .account-msg.show{display:block;}
@@ -88,9 +99,9 @@
 
   @media(max-width:760px){
     .grid3{grid-template-columns:1fr;}
-    .account-grid{grid-template-columns:1fr;}
     .course-card{flex-direction:column;align-items:flex-start;}
     .cc-actions{width:100%;}
+    .account-dropdown{width:88vw;right:-10px;}
   }
 </style>
 </head>
@@ -106,7 +117,50 @@
     <div class="wrap header-row">
       <div class="logo">GMAX <span>Insurance Academy</span></div>
       <div class="header-actions">
-        <span class="who-name" id="whoName"></span>
+        <div class="account-menu-wrap">
+          <button type="button" class="account-trigger" id="accountTrigger">
+            <span id="whoName"></span><span class="caret">▾</span>
+          </button>
+          <div class="account-dropdown" id="accountDropdown">
+
+            <div id="accMenuView" class="acc-panel">
+              <div class="acc-panel-title">Mi Cuenta</div>
+              <button type="button" class="acc-menu-item" id="openResetPw">🔑 Restablecer contraseña</button>
+              <button type="button" class="acc-menu-item" id="openChangeEmail">✉️ Cambiar correo electrónico</button>
+            </div>
+
+            <div id="accPwView" class="acc-panel" style="display:none;">
+              <button type="button" class="acc-back" id="backFromPw">← Volver</button>
+              <h4>Restablecer contraseña</h4>
+              <div class="acc-panel-body">
+                <input type="password" id="pwNew1" placeholder="Nueva contraseña">
+                <input type="password" id="pwNew2" placeholder="Confirma la nueva contraseña">
+                <button class="btn btn-primary" id="btnSavePw">Guardar nueva contraseña</button>
+                <div class="account-msg" id="pwMsg"></div>
+              </div>
+            </div>
+
+            <div id="accEmailView" class="acc-panel" style="display:none;">
+              <button type="button" class="acc-back" id="backFromEmail">← Volver</button>
+              <h4>Cambiar correo electrónico</h4>
+              <div class="acc-panel-body">
+                <p class="account-hint" id="emailCurrentHint">Cargando...</p>
+                <div id="emailStep1">
+                  <input type="email" id="emailNew" placeholder="Tu correo nuevo">
+                  <button class="btn btn-primary" id="btnSendEmailCode">Enviar código al correo nuevo</button>
+                </div>
+                <div id="emailStep2" style="display:none;">
+                  <p class="account-hint">Escribe el código de 6 dígitos que mandamos a tu correo nuevo (válido 15 min).</p>
+                  <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000">
+                  <button class="btn btn-primary" id="btnConfirmEmailCode">Confirmar correo nuevo</button>
+                  <button type="button" class="btn-link" id="btnResendEmailCode">Reenviar código</button>
+                </div>
+                <div class="account-msg" id="emailMsg"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
         <button class="logout-link" id="logoutBtn">Cerrar sesión</button>
       </div>
     </div>
@@ -121,47 +175,6 @@
     <section>
       <div class="sec-head"><h2>Mis Cursos</h2></div>
       <div id="myCourses"><div class="empty-box">Cargando tus cursos...</div></div>
-    </section>
-
-    <section id="miCuentaSec">
-      <div class="sec-head"><h2>⚙️ Mi Cuenta</h2></div>
-      <div class="account-grid">
-
-        <div class="account-card">
-          <h4>Tu nombre</h4>
-          <p class="account-hint">Así te vamos a saludar en la plataforma.</p>
-          <input type="text" id="accName" placeholder="Tu nombre completo">
-          <button class="btn btn-primary" id="btnSaveName">Guardar nombre</button>
-          <div class="account-msg" id="nameMsg"></div>
-        </div>
-
-        <div class="account-card">
-          <h4>Cambiar contraseña</h4>
-          <p class="account-hint">Escribe tu contraseña actual y la nueva.</p>
-          <input type="password" id="pwCurrent" placeholder="Contraseña actual">
-          <input type="password" id="pwNew1" placeholder="Nueva contraseña">
-          <input type="password" id="pwNew2" placeholder="Confirma la nueva contraseña">
-          <button class="btn btn-primary" id="btnSavePw">Cambiar contraseña</button>
-          <div class="account-msg" id="pwMsg"></div>
-        </div>
-
-        <div class="account-card">
-          <h4>Cambiar correo electrónico</h4>
-          <p class="account-hint" id="emailCurrentHint">Cargando...</p>
-          <div id="emailStep1">
-            <input type="email" id="emailNew" placeholder="Tu correo nuevo">
-            <button class="btn btn-primary" id="btnSendEmailCode">Enviar código al correo nuevo</button>
-          </div>
-          <div id="emailStep2" style="display:none;">
-            <p class="account-hint">Escribe el código de 6 dígitos que mandamos a tu correo nuevo (válido 15 min).</p>
-            <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000">
-            <button class="btn btn-primary" id="btnConfirmEmailCode">Confirmar correo nuevo</button>
-            <button type="button" class="btn-link" id="btnResendEmailCode">Reenviar código</button>
-          </div>
-          <div class="account-msg" id="emailMsg"></div>
-        </div>
-
-      </div>
     </section>
 
     <section>
@@ -211,7 +224,6 @@ async function init(){
   document.getElementById('greetTitle').textContent = 'Hola, ' + name + ' 👋';
   document.getElementById('whoName').textContent = (profile && profile.full_name) || currentUser.email;
 
-  document.getElementById('accName').value = (profile && profile.full_name) || '';
   document.getElementById('emailCurrentHint').textContent = 'Tu correo actual: ' + currentUser.email;
 
   document.getElementById('gate').classList.add('hidden');
@@ -292,7 +304,7 @@ async function loadFreeResources(){
 }
 
 // ============================================================================
-// Mi Cuenta — cambiar nombre, contraseña y correo electrónico
+// Mi Cuenta — menú pequeño arriba (restablecer contraseña, cambiar correo)
 // ============================================================================
 
 const EMAIL_CHANGE_REQUEST_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/email-change-request';
@@ -304,55 +316,49 @@ function showAccountMsg(id, text, ok){
   el.className = 'account-msg show ' + (ok ? 'ok' : 'error');
 }
 
-// --- Cambiar nombre ---
-document.getElementById('btnSaveName').addEventListener('click', async () => {
-  const btn = document.getElementById('btnSaveName');
-  const newName = document.getElementById('accName').value.trim();
-  if (!newName){ showAccountMsg('nameMsg', 'Escribe tu nombre.', false); return; }
+// --- Abrir/cerrar el menú desplegable de Mi Cuenta ---
+const accountTrigger = document.getElementById('accountTrigger');
+const accountDropdown = document.getElementById('accountDropdown');
 
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  const { error } = await sb.from('profiles').update({ full_name: newName }).eq('id', currentUser.id);
-  btn.disabled = false; btn.textContent = 'Guardar nombre';
-
-  if (error){
-    showAccountMsg('nameMsg', 'No se pudo guardar. Intenta de nuevo.', false);
-    return;
+accountTrigger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isOpen = accountDropdown.classList.toggle('open');
+  accountTrigger.classList.toggle('open', isOpen);
+});
+document.addEventListener('click', (e) => {
+  if (!accountDropdown.contains(e.target) && e.target !== accountTrigger){
+    accountDropdown.classList.remove('open');
+    accountTrigger.classList.remove('open');
   }
-  showAccountMsg('nameMsg', '¡Listo! Tu nombre quedó actualizado.', true);
-  document.getElementById('greetTitle').textContent = 'Hola, ' + newName.split(' ')[0] + ' 👋';
-  document.getElementById('whoName').textContent = newName;
 });
 
-// --- Cambiar contraseña ---
+function showAccPanel(id){
+  ['accMenuView','accPwView','accEmailView'].forEach(pid => {
+    document.getElementById(pid).style.display = (pid === id) ? 'block' : 'none';
+  });
+}
+document.getElementById('openResetPw').addEventListener('click', () => showAccPanel('accPwView'));
+document.getElementById('openChangeEmail').addEventListener('click', () => showAccPanel('accEmailView'));
+document.getElementById('backFromPw').addEventListener('click', () => showAccPanel('accMenuView'));
+document.getElementById('backFromEmail').addEventListener('click', () => showAccPanel('accMenuView'));
+
+// --- Restablecer contraseña (sin pedir la actual) ---
 document.getElementById('btnSavePw').addEventListener('click', async () => {
   const btn = document.getElementById('btnSavePw');
-  const current = document.getElementById('pwCurrent').value;
   const pw1 = document.getElementById('pwNew1').value;
   const pw2 = document.getElementById('pwNew2').value;
 
-  if (!current){ showAccountMsg('pwMsg', 'Escribe tu contraseña actual.', false); return; }
   if (pw1.length < 6){ showAccountMsg('pwMsg', 'La contraseña nueva debe tener al menos 6 caracteres.', false); return; }
-  if (pw1 !== pw2){ showAccountMsg('pwMsg', 'Las contraseñas nuevas no coinciden.', false); return; }
+  if (pw1 !== pw2){ showAccountMsg('pwMsg', 'Las contraseñas no coinciden.', false); return; }
 
-  btn.disabled = true; btn.textContent = 'Verificando...';
-
-  // Primero confirma que la contraseña ACTUAL es correcta antes de cambiarla.
-  const { error: signInErr } = await sb.auth.signInWithPassword({ email: currentUser.email, password: current });
-  if (signInErr){
-    btn.disabled = false; btn.textContent = 'Cambiar contraseña';
-    showAccountMsg('pwMsg', 'Tu contraseña actual no es correcta.', false);
-    return;
-  }
-
-  btn.textContent = 'Guardando...';
+  btn.disabled = true; btn.textContent = 'Guardando...';
   const { error: updateErr } = await sb.auth.updateUser({ password: pw1 });
-  btn.disabled = false; btn.textContent = 'Cambiar contraseña';
+  btn.disabled = false; btn.textContent = 'Guardar nueva contraseña';
 
   if (updateErr){
     showAccountMsg('pwMsg', 'No se pudo cambiar la contraseña. Intenta de nuevo.', false);
     return;
   }
-  document.getElementById('pwCurrent').value = '';
   document.getElementById('pwNew1').value = '';
   document.getElementById('pwNew2').value = '';
   showAccountMsg('pwMsg', '¡Listo! Tu contraseña quedó actualizada.', true);
