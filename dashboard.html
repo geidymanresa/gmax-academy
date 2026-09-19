@@ -122,10 +122,21 @@
   .ticket-badge.cerrado{background:#F0F1F5;color:var(--slate);}
   .ticket-reply{background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:13px;}
 
+  .mobile-menu-btn{display:none;}
+  .sidebar-backdrop{display:none;}
   @media(max-width:900px){
     .sidebar{position:fixed;left:-300px;top:0;bottom:0;z-index:100;transition:left .2s;}
     .sidebar.open{left:0;}
-    .main{padding:20px;}
+    .main{padding:76px 20px 20px;}
+    .mobile-menu-btn{
+      display:flex;align-items:center;justify-content:center;
+      position:fixed;top:14px;left:14px;z-index:110;
+      width:46px;height:46px;border-radius:11px;
+      background:var(--navy);color:#fff;border:none;
+      font-size:20px;box-shadow:0 8px 20px rgba(15,36,71,.35);
+      cursor:pointer;
+    }
+    .sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(15,36,71,.45);z-index:99;}
   }
 </style>
 </head>
@@ -137,6 +148,8 @@
 </div>
 
 <div id="app">
+  <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menú del curso">☰</button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <aside class="sidebar">
     <div class="sidebar-head">
       <a href="mis-cursos.html" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--slate);margin-bottom:12px;">← Mis cursos</a>
@@ -394,6 +407,7 @@ window.selectItem = function(idx){
     if (parentChapter) parentChapter.classList.remove('collapsed');
   }
   renderMain(allLessons[idx]);
+  closeMobileSidebar();
 
   // Guarda automáticamente hasta dónde llegó (no aplica en modo vista previa)
   const item = allLessons[idx];
@@ -401,6 +415,17 @@ window.selectItem = function(idx){
     sb.from('enrollments').update({ last_lesson_id: item.id }).eq('id', currentEnrollmentId);
   }
 };
+
+// ---------- MENÚ DE HAMBURGUESA (celular): abre/cierra el menú de capítulos ----------
+function closeMobileSidebar(){
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('open');
+}
+document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+  document.querySelector('.sidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('open');
+});
+document.getElementById('sidebarBackdrop').addEventListener('click', closeMobileSidebar);
 
 function resourceIcon(rtype){
   return { document:'📄', image:'🖼️', link:'🔗' }[rtype] || '🔗';
