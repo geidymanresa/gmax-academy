@@ -3,31 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crear contraseña — GMAX Insurance Academy</title>
+<title>Completa tu registro — GMAX Insurance Academy</title>
 <style>
-  body{font-family:Arial,sans-serif;max-width:440px;margin:80px auto;padding:0 20px;color:#1a1a2e;}
+  body{font-family:Arial,sans-serif;max-width:440px;margin:60px auto;padding:0 20px;color:#1a1a2e;}
   h1{font-size:22px;color:#0b3d66;margin-bottom:8px;}
   p{color:#555;line-height:1.5;font-size:14px;}
-  input{width:100%;padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:6px;font-size:15px;box-sizing:border-box;}
-  button{width:100%;background:#0b5ed7;color:#fff;border:none;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-top:12px;}
+  label{display:block;font-size:12.5px;font-weight:bold;color:#0b3d66;margin:14px 0 4px;}
+  label.required::after{content:' *';color:#d64545;}
+  input{width:100%;padding:12px;margin:0;border:1px solid #ccc;border-radius:6px;font-size:15px;box-sizing:border-box;}
+  button{width:100%;background:#0b5ed7;color:#fff;border:none;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-top:20px;}
   button:disabled{background:#999;}
   #msg{margin-top:16px;padding:14px;border-radius:8px;font-size:14px;display:none;}
   #msg.ok{background:#e8f7ee;border:1.5px solid #34a853;color:#1e6b3d;}
   #msg.error{background:#fdecec;border:1.5px solid #d64545;color:#a12a2a;}
   a{color:#0b5ed7;font-weight:bold;text-decoration:none;}
   #loading{color:#888;font-size:14px;}
+  .hint{font-size:12px;color:#888;margin-top:-2px;}
 </style>
 </head>
 <body>
 
-<h1>Crea tu contraseña</h1>
-<p id="intro">Escribe tu nueva contraseña para poder entrar a tus cursos.</p>
+<h1>Completa tu registro</h1>
+<p id="intro">Ya casi terminas. Necesitamos estos datos para dejar tu cuenta lista — todos los campos son obligatorios.</p>
 <p id="loading">Verificando tu link...</p>
 
 <form id="pwForm" style="display:none;">
-  <input type="password" id="pw1" placeholder="Nueva contraseña" minlength="6" required>
-  <input type="password" id="pw2" placeholder="Confirma tu contraseña" minlength="6" required>
-  <button type="submit" id="btnSubmit">Guardar contraseña</button>
+  <label class="required" for="fname">Nombre</label>
+  <input type="text" id="fname" required>
+
+  <label class="required" for="lname">Apellido</label>
+  <input type="text" id="lname" required>
+
+  <label class="required" for="phone">Número de teléfono</label>
+  <input type="tel" id="phone" required>
+
+  <label class="required" for="address">Dirección</label>
+  <input type="text" id="address" required>
+  <p class="hint">El nombre que escribas aquí es el que va a aparecer en la plataforma del curso (no el nombre con el que se pagó, si fueron distintos).</p>
+
+  <label class="required" for="pw1">Crea tu contraseña</label>
+  <input type="password" id="pw1" minlength="6" required>
+
+  <label class="required" for="pw2">Confirma tu contraseña</label>
+  <input type="password" id="pw2" minlength="6" required>
+
+  <button type="submit" id="btnSubmit">Guardar y terminar registro</button>
 </form>
 
 <div id="msg"></div>
@@ -58,7 +78,7 @@ function showForm() {
 
 function showExpired() {
   loading.style.display = 'none';
-  intro.textContent = 'Este link ya no es válido o expiró. Pide uno nuevo desde la página de inicio de sesión.';
+  intro.textContent = 'Este link ya no es válido o expiró. Pide uno nuevo desde la página de inicio de sesión ("Aún no tengo cuenta").';
 }
 
 async function init() {
@@ -102,9 +122,18 @@ init();
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const fname = document.getElementById('fname').value.trim();
+  const lname = document.getElementById('lname').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const address = document.getElementById('address').value.trim();
   const pw1 = document.getElementById('pw1').value;
   const pw2 = document.getElementById('pw2').value;
 
+  if (!fname || !lname || !phone || !address) {
+    showMsg('Todos los campos son obligatorios.', false);
+    return;
+  }
   if (pw1.length < 6) {
     showMsg('La contraseña debe tener al menos 6 caracteres.', false);
     return;
@@ -118,18 +147,32 @@ form.addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  const { error } = await sb.auth.updateUser({ password: pw1 });
+  const { data: userData, error: pwError } = await sb.auth.updateUser({ password: pw1 });
 
-  if (error) {
-    showMsg('Error: ' + error.message, false);
+  if (pwError) {
+    showMsg('Error al guardar la contraseña: ' + pwError.message, false);
     btn.disabled = false;
-    btn.textContent = 'Guardar contraseña';
-  } else {
-    form.style.display = 'none';
-    intro.style.display = 'none';
-    showMsg('¡Listo! Tu contraseña quedó guardada. Ya puedes iniciar sesión.', true);
-    msg.innerHTML += '<br><br><a href="/login.html">Ir a iniciar sesión →</a>';
+    btn.textContent = 'Guardar y terminar registro';
+    return;
   }
+
+  const fullName = (fname + ' ' + lname).trim();
+  const { error: profileError } = await sb
+    .from('profiles')
+    .update({ full_name: fullName, phone, address })
+    .eq('id', userData.user.id);
+
+  if (profileError) {
+    showMsg('Tu contraseña sí se guardó, pero hubo un error guardando tus datos (nombre/teléfono/dirección): ' + profileError.message + '. Escríbenos a soporte para terminar de completarlo.', false);
+    btn.disabled = false;
+    btn.textContent = 'Guardar y terminar registro';
+    return;
+  }
+
+  form.style.display = 'none';
+  intro.style.display = 'none';
+  showMsg('¡Listo! Tu registro quedó completo. Ya puedes entrar a tu curso.', true);
+  setTimeout(() => { window.location.href = '/mis-cursos.html'; }, 1500);
 });
 </script>
 

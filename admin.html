@@ -760,7 +760,7 @@ async function runPersonSearch(){
   body.innerHTML = '<tr><td colspan="5" class="empty-state">Buscando...</td></tr>';
 
   const orFilter = `full_name.ilike.%${q}%,email.ilike.%${q}%`;
-  const { data: users } = await sb.from('profiles').select('id, full_name, email, role, created_at').or(orFilter).limit(50);
+  const { data: users } = await sb.from('profiles').select('id, full_name, email, role, phone, address, created_at').or(orFilter).limit(50);
   const { data: leadMatches } = await sb.from('leads').select('id, full_name, email, phone, source, created_at').or(orFilter).order('created_at', {ascending:false}).limit(50);
 
   const userRows = await Promise.all((users || []).map(async u => {
@@ -774,7 +774,7 @@ async function runPersonSearch(){
     ];
     return `<tr>
       <td><b>${u.full_name || '—'}</b></td>
-      <td>${u.email || '—'}</td>
+      <td>${u.email || '—'}<br><span style="color:var(--slate);font-size:11.5px;">📞 ${u.phone || 'sin teléfono'}${u.address ? ' · 📍 ' + u.address : ''}</span></td>
       <td><span style="background:#EAF0FB;color:var(--blue);font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;white-space:nowrap;">Usuario registrado${u.role !== 'student' ? ' · ' + u.role : ''}</span></td>
       <td>${formatDate(u.created_at)}</td>
       <td>${compras.length ? compras.join('<br>') : '<span style="color:var(--slate);">Sin compras todavía</span>'}</td>
