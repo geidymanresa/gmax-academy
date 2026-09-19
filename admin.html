@@ -170,6 +170,7 @@
     <div class="navitem" data-view="recursos">📄 &nbsp;Recursos Gratis</div>
     <div class="navitem" data-view="materiales">💰 &nbsp;Materiales de Pago</div>
     <div class="navitem" data-view="leads">👥 &nbsp;Leads</div>
+    <div class="navitem" data-view="reportes">📈 &nbsp;Reportes</div>
     <div class="navitem" data-view="soporte">🆘 &nbsp;Soporte</div>
     <div class="sidebar-foot">
       <div class="who"><b id="whoName">—</b><span id="whoRole">—</span></div>
@@ -292,6 +293,43 @@
         <table>
           <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Ciudad/Estado</th><th>Origen</th><th>Fecha</th></tr></thead>
           <tbody id="leadsBody"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTES -->
+    <section id="view-reportes" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Reportes</h1><p>Filtra por fechas y busca personas — usuarios registrados, compradores y leads.</p></div>
+      </div>
+
+      <div class="card" style="padding:22px 24px;">
+        <div class="card-head" style="padding:0 0 14px;"><h3>📅 Filtrar por rango de fechas</h3></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;">
+          <div class="form-row" style="margin-bottom:0;"><label>Desde</label><input type="date" id="repDateFrom"></div>
+          <div class="form-row" style="margin-bottom:0;"><label>Hasta</label><input type="date" id="repDateTo"></div>
+          <button class="btn btn-primary" id="repDateFilterBtn" type="button">Buscar</button>
+          <button class="btn btn-ghost" id="repDateClearBtn" type="button">Limpiar</button>
+        </div>
+        <div class="stats-grid" style="margin-bottom:0;">
+          <div class="stat-card"><div class="label">Cursos creados</div><div class="value" id="repCourses">—</div></div>
+          <div class="stat-card"><div class="label">Inscripciones</div><div class="value" id="repEnrollments">—</div></div>
+          <div class="stat-card"><div class="label">Usuarios registrados</div><div class="value" id="repUsers">—</div></div>
+          <div class="stat-card"><div class="label">Leads capturados</div><div class="value" id="repLeadsCount">—</div></div>
+        </div>
+        <p style="font-size:12px;color:var(--slate);margin-top:12px;" id="repDateHint">Sin fechas seleccionadas se muestra el total histórico.</p>
+      </div>
+
+      <div class="card" style="padding:22px 24px;">
+        <div class="card-head" style="padding:0 0 14px;"><h3>🔎 Buscar personas por nombre o correo</h3></div>
+        <p style="font-size:12.5px;color:var(--slate);margin-bottom:14px;">Busca entre todos los usuarios registrados (con lo que hayan comprado) y entre los leads (personas que dejaron sus datos pero todavía no se han registrado).</p>
+        <div style="display:flex;gap:10px;margin-bottom:18px;">
+          <input type="text" id="repSearchInput" placeholder="Ej. María López o maria@correo.com" style="flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:'Inter',sans-serif;">
+          <button class="btn btn-primary" id="repSearchBtn" type="button">Buscar</button>
+        </div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Registrado / Capturado</th><th>Qué compró</th></tr></thead>
+          <tbody id="repSearchBody"><tr><td colspan="5" class="empty-state">Escribe un nombre o correo y dale a Buscar.</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -601,6 +639,7 @@ document.querySelectorAll('.navitem').forEach(item=>{
     if(view==='recursos') loadResources();
     if(view==='materiales') loadMaterials();
     if(view==='leads') loadLeads();
+    if(view==='reportes') runDateFilter();
     if(view==='soporte') loadSupport();
   });
 });
@@ -659,6 +698,89 @@ async function loadDashboard(){
 
 function formatMoney(cents){
   return '$' + ((cents||0)/100).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ============================================================================
+// REPORTES — filtro por rango de fechas + buscador de personas
+// ============================================================================
+document.getElementById('repDateFilterBtn').addEventListener('click', runDateFilter);
+document.getElementById('repDateClearBtn').addEventListener('click', ()=>{
+  document.getElementById('repDateFrom').value = '';
+  document.getElementById('repDateTo').value = '';
+  runDateFilter();
+});
+
+async function runDateFilter(){
+  const from = document.getElementById('repDateFrom').value;
+  const to = document.getElementById('repDateTo').value;
+  const hint = document.getElementById('repDateHint');
+  if (from || to){
+    hint.textContent = `Mostrando resultados ${from ? 'desde ' + from : ''}${from && to ? ' ' : ''}${to ? 'hasta ' + to : ''}.`;
+  } else {
+    hint.textContent = 'Sin fechas seleccionadas se muestra el total histórico.';
+  }
+
+  const fromISO = from ? new Date(from + 'T00:00:00').toISOString() : null;
+  const toISO = to ? new Date(to + 'T23:59:59').toISOString() : null;
+
+  let coursesQ = sb.from('courses').select('*', {count:'exact', head:true});
+  let enrollQ = sb.from('enrollments').select('*', {count:'exact', head:true});
+  let usersQ = sb.from('profiles').select('*', {count:'exact', head:true});
+  let leadsQ = sb.from('leads').select('*', {count:'exact', head:true});
+  if (fromISO){ coursesQ = coursesQ.gte('created_at', fromISO); enrollQ = enrollQ.gte('starts_at', fromISO); usersQ = usersQ.gte('created_at', fromISO); leadsQ = leadsQ.gte('created_at', fromISO); }
+  if (toISO){ coursesQ = coursesQ.lte('created_at', toISO); enrollQ = enrollQ.lte('starts_at', toISO); usersQ = usersQ.lte('created_at', toISO); leadsQ = leadsQ.lte('created_at', toISO); }
+
+  const [coursesRes, enrollRes, usersRes, leadsRes] = await Promise.all([coursesQ, enrollQ, usersQ, leadsQ]);
+  document.getElementById('repCourses').textContent = coursesRes.count ?? 0;
+  document.getElementById('repEnrollments').textContent = enrollRes.count ?? 0;
+  document.getElementById('repUsers').textContent = usersRes.count ?? 0;
+  document.getElementById('repLeadsCount').textContent = leadsRes.count ?? 0;
+}
+
+document.getElementById('repSearchBtn').addEventListener('click', runPersonSearch);
+document.getElementById('repSearchInput').addEventListener('keydown', (e)=>{ if (e.key === 'Enter') runPersonSearch(); });
+
+async function runPersonSearch(){
+  const q = document.getElementById('repSearchInput').value.trim();
+  const body = document.getElementById('repSearchBody');
+  if (!q){
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">Escribe un nombre o correo y dale a Buscar.</td></tr>';
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="5" class="empty-state">Buscando...</td></tr>';
+
+  const orFilter = `full_name.ilike.%${q}%,email.ilike.%${q}%`;
+  const { data: users } = await sb.from('profiles').select('id, full_name, email, role, created_at').or(orFilter).limit(50);
+  const { data: leadMatches } = await sb.from('leads').select('id, full_name, email, phone, source, created_at').or(orFilter).order('created_at', {ascending:false}).limit(50);
+
+  const userRows = await Promise.all((users || []).map(async u => {
+    const [{ data: enrolls }, { data: mats }] = await Promise.all([
+      sb.from('enrollments').select('status, starts_at, courses(title)').eq('user_id', u.id),
+      sb.from('material_purchases').select('created_at, materials(title)').eq('user_id', u.id)
+    ]);
+    const compras = [
+      ...(enrolls || []).map(e => `📘 ${e.courses?.title || 'Curso'} (${e.status === 'active' ? 'activo' : e.status}, ${formatDate(e.starts_at)})`),
+      ...(mats || []).map(m => `📄 ${m.materials?.title || 'Material'} (${formatDate(m.created_at)})`)
+    ];
+    return `<tr>
+      <td><b>${u.full_name || '—'}</b></td>
+      <td>${u.email || '—'}</td>
+      <td><span style="background:#EAF0FB;color:var(--blue);font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;white-space:nowrap;">Usuario registrado${u.role !== 'student' ? ' · ' + u.role : ''}</span></td>
+      <td>${formatDate(u.created_at)}</td>
+      <td>${compras.length ? compras.join('<br>') : '<span style="color:var(--slate);">Sin compras todavía</span>'}</td>
+    </tr>`;
+  }));
+
+  const leadRows = (leadMatches || []).map(l => `<tr>
+    <td><b>${l.full_name || '—'}</b></td>
+    <td>${l.email || '—'}</td>
+    <td><span style="background:#FBF0D9;color:#8A6300;font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;white-space:nowrap;">Lead (${sourceLabel(l.source)})</span></td>
+    <td>${formatDate(l.created_at)}</td>
+    <td><span style="color:var(--slate);">Todavía no se ha registrado ni comprado — tel.: ${l.phone || '—'}</span></td>
+  </tr>`);
+
+  const allRows = [...userRows, ...leadRows];
+  body.innerHTML = allRows.length ? allRows.join('') : '<tr><td colspan="5" class="empty-state">No se encontró nadie con ese nombre o correo.</td></tr>';
 }
 
 // ---- Finalización de cursos: por cada curso publicado, cuenta cuántos
