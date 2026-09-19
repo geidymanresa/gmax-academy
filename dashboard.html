@@ -363,7 +363,7 @@ async function loadCourseContent(lastLessonId){
 
   allLessons = [];
   if (currentCourse.intro_video_url){
-    allLessons.push({ id:'intro', title:'Video de Bienvenida', video_url: currentCourse.intro_video_url, description:'Antes de empezar, mira este mensaje de bienvenida al curso.', resource_links:[], type:'intro' });
+    allLessons.push({ id:'intro', title:'Introducción', video_url: currentCourse.intro_video_url, description: currentCourse.intro_text || 'Antes de empezar, mira este mensaje de bienvenida al curso.', resource_links:[], type:'intro' });
   }
   (chapters||[]).sort((a,b)=>a.position-b.position).forEach(ch => {
     (ch.lessons||[]).sort((a,b)=>a.position-b.position).forEach(l => {
@@ -483,13 +483,7 @@ window.selectItem = function(idx){
   if (!isPreviewMode && currentEnrollmentId && item){
     const update = { last_item_key: item.id };
     if (item.type === 'lesson') update.last_lesson_id = item.id;
-    sb.from('enrollments').update(update).eq('id', currentEnrollmentId).then(({ error }) => {
-      if (error){
-        console.error('GMAX-DEBUG: NO se pudo guardar el progreso ->', error.message || error, error);
-      } else {
-        console.log('GMAX-DEBUG: progreso guardado correctamente ->', update);
-      }
-    });
+    sb.from('enrollments').update(update).eq('id', currentEnrollmentId);
   }
 };
 

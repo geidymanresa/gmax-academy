@@ -377,6 +377,17 @@
       <div class="form-row"><label>Video de bienvenida (link de Bunny.net)</label><input type="text" id="courseIntroVideo" placeholder="https://..."></div>
       <div class="form-row"><label>Video de despedida (link de Bunny.net)</label><input type="text" id="courseOutroVideo" placeholder="https://..."></div>
     </div>
+    <div class="form-row">
+      <label>Texto de introducción (aparece debajo del video de bienvenida, dentro de la sección "Introducción" del curso — NO es un capítulo)</label>
+      <div class="richtext-wrap">
+        <div class="rt-toolbar">
+          <button type="button" onclick="execRT('bold', this)"><b>B</b></button>
+          <button type="button" onclick="execRT('italic', this)"><i>I</i></button>
+          <button type="button" onclick="execRTLink(this)">🔗 Link</button>
+        </div>
+        <div class="lesson-richtext" id="courseIntroText" contenteditable="true" style="min-height:140px;"></div>
+      </div>
+    </div>
     <div class="form-row"><label>Estado</label>
       <select id="courseStatus">
         <option value="draft">Borrador (no visible al público)</option>
@@ -955,6 +966,7 @@ function openCourseModal(){
   document.getElementById('courseFullDesc').value = '';
   document.getElementById('courseIntroVideo').value = '';
   document.getElementById('courseOutroVideo').value = '';
+  document.getElementById('courseIntroText').innerHTML = '';
   document.getElementById('courseStatus').value = 'draft';
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
@@ -976,6 +988,7 @@ window.editCourse = async function(id){
   document.getElementById('courseFullDesc').value = course.description || '';
   document.getElementById('courseIntroVideo').value = course.intro_video_url || '';
   document.getElementById('courseOutroVideo').value = course.outro_video_url || '';
+  document.getElementById('courseIntroText').innerHTML = course.intro_text || '';
   document.getElementById('courseStatus').value = course.status;
   document.getElementById('chaptersContainer').innerHTML = '';
   chapterCount = 0;
@@ -1346,6 +1359,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const thumbnail = document.getElementById('courseThumbnail').value.trim();
     const introVideo = document.getElementById('courseIntroVideo').value.trim();
     const outroVideo = document.getElementById('courseOutroVideo').value.trim();
+    const introText = document.getElementById('courseIntroText').innerHTML.trim();
     const status = document.getElementById('courseStatus').value;
 
     const msgEl = document.getElementById('courseMsg');
@@ -1357,7 +1371,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const payload = {
       title, slug, price_cents: Math.round(price*100), access_days: accessDays,
       short_description: shortDesc, description: fullDesc, thumbnail_url: thumbnail,
-      intro_video_url: introVideo, outro_video_url: outroVideo, status,
+      intro_video_url: introVideo, outro_video_url: outroVideo, intro_text: introText, status,
       created_by: currentUser.id
     };
 
