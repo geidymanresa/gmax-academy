@@ -72,6 +72,8 @@
   .days-chip.ok{background:#E8F3EA;color:#2A7A3B;}
   .days-chip.soon{background:#FBF0D9;color:#8A6300;}
   .days-chip.urgent{background:#FCE9E9;color:#D64545;}
+  .exam-bar{display:flex;width:100%;box-sizing:border-box;align-items:center;justify-content:center;gap:9px;margin-top:14px;padding:15px;border-radius:11px;background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;font-family:'Sora',sans-serif;font-weight:800;font-size:14px;text-decoration:none;letter-spacing:.01em;}
+  .exam-bar:hover{opacity:.9;}
 
   .account-hint{font-size:12px;color:var(--slate);margin-bottom:10px;}
   .btn-link{background:none;border:none;color:var(--blue);font-weight:600;font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:auto;}
@@ -274,12 +276,12 @@ async function loadMyCourses(){
           <h3>${e.courses.title}</h3>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div>
           <div class="cc-meta">${pct}% completado · <span class="days-chip ${chipClass}">${chipText}</span></div>
+          ${expired ? '' : `<a href="examen.html?course=${e.course_id}" class="exam-bar">📝 Ver Exámenes del Curso</a>`}
         </div>
         <div class="cc-actions">
           ${expired
             ? `<a href="index.html#catalogo" class="btn btn-primary">Renovar acceso</a>`
-            : `<a href="dashboard.html?course=${e.course_id}" class="btn btn-primary">Continuar →</a>
-               <a href="examen.html?course=${e.course_id}" class="btn btn-outline">📝 Ver exámenes</a>`}
+            : `<a href="dashboard.html?course=${e.course_id}" class="btn btn-primary">Continuar →</a>`}
         </div>
       </div>`;
   }));

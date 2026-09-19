@@ -204,8 +204,13 @@
   .waitlist-form{display:none;gap:8px;margin-top:10px;}
   .waitlist-form.open{display:flex;flex-direction:column;}
   .waitlist-form input{padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;}
-  .waitlist-msg{font-size:12.5px;margin-top:8px;display:none;}
-  .waitlist-msg.ok{display:block;color:var(--success, #2A7A3B);}
+  .waitlist-msg{font-size:13px;margin-top:8px;padding:10px 12px;border-radius:8px;font-weight:600;display:none;}
+  .waitlist-msg.show{display:block;}
+  .waitlist-msg.error{background:#FCE9E9;color:#D64545;}
+  .waitlist-success{background:#E8F3EA;border:1.5px solid #34a853;border-radius:12px;padding:20px;margin-top:10px;text-align:center;}
+  .waitlist-success .ws-icon{font-size:26px;margin-bottom:8px;}
+  .waitlist-success strong{display:block;font-family:'Sora',sans-serif;font-size:15px;color:#1e6b3d;margin-bottom:6px;}
+  .waitlist-success p{font-size:13px;color:#1e6b3d;margin:0;line-height:1.5;}
 
   /* TEAM */
   .team{background:var(--white);}
@@ -825,12 +830,27 @@
   const LEAD_EMAILS_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/lead-emails';
 
   window.submitWaitlist = async function(courseId){
+    const container = document.getElementById('wf-' + courseId);
     const firstName = document.getElementById('wfFirstName-' + courseId).value.trim();
     const lastName = document.getElementById('wfLastName-' + courseId).value.trim();
     const email = document.getElementById('wfEmail-' + courseId).value.trim();
     const phone = document.getElementById('wfPhone-' + courseId).value.trim();
     const msgEl = document.getElementById('wfMsg-' + courseId);
-    if (!firstName || !lastName || !email || !phone){ msgEl.textContent = 'Por favor llena todos los campos (nombre, apellido, correo y teléfono).'; msgEl.className='waitlist-msg ok'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
+    const btn = container.querySelector('.btn-gold');
+
+    if (!firstName || !lastName || !email || !phone){
+      msgEl.textContent = 'Por favor llena todos los campos (nombre, apellido, correo y teléfono).';
+      msgEl.className = 'waitlist-msg show error';
+      return;
+    }
+
+    // Mientras se envía, se deshabilita el botón para que no pueda darle
+    // "Avísenme" varias veces seguidas sin saber si ya se registró.
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    msgEl.className = 'waitlist-msg';
+    msgEl.textContent = '';
+
     // Generamos el id nosotros mismos (en vez de pedirle a Supabase que nos
     // devuelva el registro recién creado con .select()), porque leer de vuelta
     // requiere permiso de LECTURA pública sobre la tabla leads, y eso expondría
@@ -838,7 +858,13 @@
     // la consola del navegador. Así solo hace falta permiso de escritura.
     const newLeadId = crypto.randomUUID();
     const { error } = await sb.from('leads').insert({ id: newLeadId, full_name: firstName + ' ' + lastName, email, phone, source: 'course_waitlist', source_detail: courseId });
-    if (error){ msgEl.textContent = 'Hubo un error, intenta de nuevo.'; msgEl.style.color='#D64545'; msgEl.style.display='block'; return; }
+    if (error){
+      btn.disabled = false;
+      btn.textContent = 'Avísenme';
+      msgEl.textContent = 'Hubo un error, intenta de nuevo.';
+      msgEl.className = 'waitlist-msg show error';
+      return;
+    }
     // Manda el correo de confirmación inmediato ("ya quedaste anotado"). Si
     // este correo falla por lo que sea, no bloqueamos el mensaje de éxito en
     // pantalla — el lead ya quedó guardado de todas formas.
@@ -847,9 +873,16 @@
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
       body: JSON.stringify({ type: 'waitlist_confirm', lead_id: newLeadId })
     }).catch(() => {});
-    msgEl.textContent = '¡Listo! Te avisamos apenas esté disponible.';
-    msgEl.className = 'waitlist-msg ok';
-    msgEl.style.display = 'block';
+
+    // Reemplaza TODO el formulario (campos + botón) por un cartel grande y
+    // claro de confirmación, para que sea imposible no darse cuenta de que
+    // ya quedó enviado, y para que ya no se pueda volver a dar clic.
+    container.innerHTML = `
+      <div class="waitlist-success">
+        <div class="ws-icon">✅</div>
+        <strong>¡Listo, ya quedaste anotado!</strong>
+        <p>Te vamos a notificar por correo apenas este curso esté publicado y se lance oficialmente.</p>
+      </div>`;
   };
 
   // ---------------- RECURSOS GRATUITOS ----------------
