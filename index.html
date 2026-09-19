@@ -653,6 +653,21 @@
 
   let currentProduct = null; // curso actualmente abierto en la vista de detalle
 
+  // ---------------- ANALÍTICA (conteos anónimos para el panel admin) ----------------
+  // Solo guarda el tipo de evento y la fecha — nunca nombre, correo, IP ni nada que
+  // identifique a la persona. Es "dispara y olvida": si falla, no interrumpe al visitante.
+  function logAnalyticsEvent(eventType){
+    sb.from('analytics_events').insert({ event_type: eventType }).then(()=>{}).catch(()=>{});
+  }
+  (function logPageView(){
+    try{
+      if (!sessionStorage.getItem('gmax_pv_logged')){
+        sessionStorage.setItem('gmax_pv_logged', '1');
+        logAnalyticsEvent('page_view');
+      }
+    } catch(e){ logAnalyticsEvent('page_view'); }
+  })();
+
   // ---------------- CARRITO ----------------
   function getCart(){
     try { return JSON.parse(localStorage.getItem('gmax_cart') || '[]'); } catch(e){ return []; }
@@ -675,6 +690,7 @@
     }
     cart.push({ type, id, title, price_cents: priceCents });
     saveCart(cart);
+    logAnalyticsEvent('add_to_cart');
     openCart();
   };
   window.removeFromCart = function(type, id){

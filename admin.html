@@ -188,6 +188,8 @@
         <div class="stat-card"><div class="label">Cursos publicados</div><div class="value" id="statCourses">—</div></div>
         <div class="stat-card"><div class="label">Inscripciones activas</div><div class="value" id="statEnrollments">—</div></div>
         <div class="stat-card"><div class="label">Usuarios registrados</div><div class="value" id="statUsers">—</div></div>
+        <div class="stat-card"><div class="label">Visitas a la página</div><div class="value" id="statPageViews">—</div></div>
+        <div class="stat-card"><div class="label">Agregados al carrito</div><div class="value" id="statAddToCart">—</div></div>
         <div class="stat-card"><div class="label">Leads totales</div><div class="value" id="statLeads">—</div></div>
         <div class="stat-card"><div class="label">Descargas de gratuitos</div><div class="value" id="statFreeDownloads">—</div></div>
         <div class="stat-card"><div class="label">Materiales de pago vendidos</div><div class="value" id="statMaterialSales">—</div></div>
@@ -613,10 +615,14 @@ async function loadDashboard(){
   const { count: freeDownloadCount } = await sb.from('leads').select('*', {count:'exact', head:true}).eq('source','free_resource');
   const { count: materialSalesCount } = await sb.from('material_purchases').select('*', {count:'exact', head:true});
   const { count: supportOpenCount } = await sb.from('support_tickets').select('*', {count:'exact', head:true}).eq('status','abierto');
+  const { count: pageViewCount } = await sb.from('analytics_events').select('*', {count:'exact', head:true}).eq('event_type','page_view');
+  const { count: addToCartCount } = await sb.from('analytics_events').select('*', {count:'exact', head:true}).eq('event_type','add_to_cart');
 
   document.getElementById('statCourses').textContent = courseCount ?? 0;
   document.getElementById('statEnrollments').textContent = enrollCount ?? 0;
   document.getElementById('statUsers').textContent = userCount ?? 0;
+  document.getElementById('statPageViews').textContent = pageViewCount ?? 0;
+  document.getElementById('statAddToCart').textContent = addToCartCount ?? 0;
   document.getElementById('statLeads').textContent = leadCount ?? 0;
   document.getElementById('statFreeDownloads').textContent = freeDownloadCount ?? 0;
   document.getElementById('statMaterialSales').textContent = materialSalesCount ?? 0;
