@@ -138,6 +138,19 @@
     }
     .sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(15,36,71,.45);z-index:99;}
   }
+
+  /* Aviso de días de acceso restantes — barra fija arriba de todo */
+  #accessBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:140;padding:11px 46px 11px 20px;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;align-items:center;justify-content:center;gap:10px;text-align:center;}
+  #accessBanner.warn{background:#FBF0D9;color:#8A6300;}
+  #accessBanner.danger{background:#FCE9E9;color:#D64545;}
+  #accessBanner.ok{background:#E8F3EA;color:#2A7A3B;}
+  #accessBannerClose{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.08);border:none;border-radius:6px;width:24px;height:24px;font-size:13px;cursor:pointer;color:inherit;line-height:1;}
+  body.has-access-banner .main{padding-top:80px;}
+  @media(max-width:900px){
+    body.has-access-banner .main{padding-top:120px;}
+    body.has-access-banner .mobile-menu-btn{top:58px;}
+    body.has-access-banner .sidebar{top:44px;}
+  }
 </style>
 </head>
 <body>
@@ -145,6 +158,11 @@
 <div id="gate">
   <div class="spinner"></div>
   <div>Cargando tu curso...</div>
+</div>
+
+<div id="accessBanner">
+  <span id="accessBannerText"></span>
+  <button type="button" id="accessBannerClose" aria-label="Cerrar aviso">✕</button>
 </div>
 
 <div id="app">
@@ -221,6 +239,50 @@ window.doLogout = async function(){
   window.location.href = 'login.html';
 };
 
+function maybeShowAccessBanner(enrollment){
+  const banner = document.getElementById('accessBanner');
+  const text = document.getElementById('accessBannerText');
+  if (!enrollment || !enrollment.expires_at) return;
+
+  const expiresAt = new Date(enrollment.expires_at);
+  const msLeft = expiresAt - new Date();
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+  // Se recuerda si ya cerró el aviso EN ESTA SESIÓN del navegador (esta
+  // pestaña); la próxima vez que entre (nueva sesión/pestaña) vuelve a
+  // aparecer, como pidió Geidy.
+  const dismissKey = 'gmax_access_banner_dismissed_' + enrollment.id;
+  try {
+    if (sessionStorage.getItem(dismissKey)) return;
+  } catch (e){}
+
+  banner.classList.remove('warn', 'danger', 'ok');
+  if (daysLeft <= 7){
+    banner.classList.add('danger');
+  } else if (daysLeft <= 30){
+    banner.classList.add('warn');
+  } else {
+    banner.classList.add('ok');
+  }
+
+  if (daysLeft <= 0){
+    text.textContent = '⏰ Tu acceso a este curso vence hoy.';
+  } else if (daysLeft === 1){
+    text.textContent = '⏰ Te queda 1 día de acceso a este curso.';
+  } else {
+    text.textContent = `⏰ Te quedan ${daysLeft} días de acceso a este curso.`;
+  }
+
+  banner.style.display = 'flex';
+  document.body.classList.add('has-access-banner');
+
+  document.getElementById('accessBannerClose').onclick = () => {
+    banner.style.display = 'none';
+    document.body.classList.remove('has-access-banner');
+    try { sessionStorage.setItem(dismissKey, '1'); } catch (e){}
+  };
+}
+
 async function init(){
   const { data: { session } } = await sb.auth.getSession();
   if (!session){ window.location.href = 'login.html'; return; }
@@ -282,6 +344,7 @@ async function loadEnrollments(){
 
   currentCourse = enrollments[0].courses;
   currentEnrollmentId = enrollments[0].id;
+  maybeShowAccessBanner(enrollments[0]);
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.add('ready');
   document.getElementById('courseName').textContent = currentCourse.title;

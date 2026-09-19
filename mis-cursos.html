@@ -47,9 +47,27 @@
   .progress-bar{height:7px;background:var(--line);border-radius:100px;overflow:hidden;margin-bottom:5px;}
   .progress-fill{height:100%;background:var(--gold);border-radius:100px;}
   .cc-meta{font-size:12px;color:var(--slate);}
-  .btn{font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:11px 20px;border-radius:9px;border:none;white-space:nowrap;}
+  .cc-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
+  .btn{font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:11px 20px;border-radius:9px;border:none;white-space:nowrap;text-align:center;cursor:pointer;}
   .btn-primary{background:var(--blue);color:#fff;}
   .btn-gold{background:var(--gold);color:var(--navy);}
+  .btn-outline{background:#fff;color:var(--blue);border:1.5px solid var(--line);}
+  .days-chip{display:inline-block;font-weight:700;padding:2px 9px;border-radius:100px;font-size:11.5px;}
+  .days-chip.ok{background:#E8F3EA;color:#2A7A3B;}
+  .days-chip.soon{background:#FBF0D9;color:#8A6300;}
+  .days-chip.urgent{background:#FCE9E9;color:#D64545;}
+
+  .account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .account-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;}
+  .account-card h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+  .account-hint{font-size:12px;color:var(--slate);margin-bottom:10px;}
+  .account-card input{width:100%;padding:11px 13px;margin-bottom:10px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:'Inter',sans-serif;}
+  .account-card .btn{width:100%;}
+  .btn-link{background:none;border:none;color:var(--blue);font-weight:600;font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px 0 0;width:auto;}
+  .account-msg{font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:10px;display:none;}
+  .account-msg.show{display:block;}
+  .account-msg.ok{background:#E8F3EA;color:#2A7A3B;}
+  .account-msg.error{background:#FCE9E9;color:#D64545;}
 
   .empty-box{background:#fff;border:1.5px dashed var(--line);border-radius:16px;padding:36px;text-align:center;color:var(--slate);font-size:14px;}
   .empty-box a{color:var(--blue);font-weight:700;}
@@ -70,7 +88,9 @@
 
   @media(max-width:760px){
     .grid3{grid-template-columns:1fr;}
+    .account-grid{grid-template-columns:1fr;}
     .course-card{flex-direction:column;align-items:flex-start;}
+    .cc-actions{width:100%;}
   }
 </style>
 </head>
@@ -101,6 +121,47 @@
     <section>
       <div class="sec-head"><h2>Mis Cursos</h2></div>
       <div id="myCourses"><div class="empty-box">Cargando tus cursos...</div></div>
+    </section>
+
+    <section id="miCuentaSec">
+      <div class="sec-head"><h2>⚙️ Mi Cuenta</h2></div>
+      <div class="account-grid">
+
+        <div class="account-card">
+          <h4>Tu nombre</h4>
+          <p class="account-hint">Así te vamos a saludar en la plataforma.</p>
+          <input type="text" id="accName" placeholder="Tu nombre completo">
+          <button class="btn btn-primary" id="btnSaveName">Guardar nombre</button>
+          <div class="account-msg" id="nameMsg"></div>
+        </div>
+
+        <div class="account-card">
+          <h4>Cambiar contraseña</h4>
+          <p class="account-hint">Escribe tu contraseña actual y la nueva.</p>
+          <input type="password" id="pwCurrent" placeholder="Contraseña actual">
+          <input type="password" id="pwNew1" placeholder="Nueva contraseña">
+          <input type="password" id="pwNew2" placeholder="Confirma la nueva contraseña">
+          <button class="btn btn-primary" id="btnSavePw">Cambiar contraseña</button>
+          <div class="account-msg" id="pwMsg"></div>
+        </div>
+
+        <div class="account-card">
+          <h4>Cambiar correo electrónico</h4>
+          <p class="account-hint" id="emailCurrentHint">Cargando...</p>
+          <div id="emailStep1">
+            <input type="email" id="emailNew" placeholder="Tu correo nuevo">
+            <button class="btn btn-primary" id="btnSendEmailCode">Enviar código al correo nuevo</button>
+          </div>
+          <div id="emailStep2" style="display:none;">
+            <p class="account-hint">Escribe el código de 6 dígitos que mandamos a tu correo nuevo (válido 15 min).</p>
+            <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000">
+            <button class="btn btn-primary" id="btnConfirmEmailCode">Confirmar correo nuevo</button>
+            <button type="button" class="btn-link" id="btnResendEmailCode">Reenviar código</button>
+          </div>
+          <div class="account-msg" id="emailMsg"></div>
+        </div>
+
+      </div>
     </section>
 
     <section>
@@ -150,6 +211,9 @@ async function init(){
   document.getElementById('greetTitle').textContent = 'Hola, ' + name + ' 👋';
   document.getElementById('whoName').textContent = (profile && profile.full_name) || currentUser.email;
 
+  document.getElementById('accName').value = (profile && profile.full_name) || '';
+  document.getElementById('emailCurrentHint').textContent = 'Tu correo actual: ' + currentUser.email;
+
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
 
@@ -188,6 +252,8 @@ async function loadMyCourses(){
     }
     const pct = (lessonIds && lessonIds.length) ? Math.round((doneCount/lessonIds.length)*100) : 0;
     const daysLeft = Math.max(0, Math.ceil((new Date(e.expires_at) - new Date()) / (1000*60*60*24)));
+    const chipClass = expired ? 'urgent' : (daysLeft <= 15 ? 'urgent' : (daysLeft <= 30 ? 'soon' : 'ok'));
+    const chipText = expired ? 'Acceso vencido' : (daysLeft === 1 ? '1 día de acceso restante' : daysLeft + ' días de acceso restantes');
 
     return `
       <div class="course-card">
@@ -195,11 +261,14 @@ async function loadMyCourses(){
         <div class="cc-body">
           <h3>${e.courses.title}</h3>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div>
-          <div class="cc-meta">${pct}% completado ${expired ? '· <span style="color:#D64545;font-weight:700;">Acceso vencido</span>' : '· ' + daysLeft + ' días de acceso restantes'}</div>
+          <div class="cc-meta">${pct}% completado · <span class="days-chip ${chipClass}">${chipText}</span></div>
         </div>
-        ${expired
-          ? `<a href="index.html#catalogo" class="btn btn-primary">Renovar acceso</a>`
-          : `<a href="dashboard.html?course=${e.course_id}" class="btn btn-primary">Continuar →</a>`}
+        <div class="cc-actions">
+          ${expired
+            ? `<a href="index.html#catalogo" class="btn btn-primary">Renovar acceso</a>`
+            : `<a href="dashboard.html?course=${e.course_id}" class="btn btn-primary">Continuar →</a>
+               <a href="examen.html?course=${e.course_id}" class="btn btn-outline">📝 Ver exámenes</a>`}
+        </div>
       </div>`;
   }));
 
@@ -207,7 +276,7 @@ async function loadMyCourses(){
 }
 
 async function loadFreeResources(){
-  const { data: resources } = await sb.from('free_resources').select('*').eq('status','published').order('created_at', {ascending:false}).limit(3);
+  const { data: resources } = await sb.from('free_resources').select('*').eq('status','published').neq('content_type','video').order('created_at', {ascending:false}).limit(3);
   const container = document.getElementById('freeResources');
   if (!resources || resources.length === 0){
     container.innerHTML = `<div class="empty-box" style="grid-column:1/-1;">Todavía no hay recursos gratuitos publicados.</div>`;
@@ -221,6 +290,168 @@ async function loadFreeResources(){
     </div>
   `).join('');
 }
+
+// ============================================================================
+// Mi Cuenta — cambiar nombre, contraseña y correo electrónico
+// ============================================================================
+
+const EMAIL_CHANGE_REQUEST_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/email-change-request';
+const EMAIL_CHANGE_CONFIRM_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/email-change-confirm';
+
+function showAccountMsg(id, text, ok){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'account-msg show ' + (ok ? 'ok' : 'error');
+}
+
+// --- Cambiar nombre ---
+document.getElementById('btnSaveName').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSaveName');
+  const newName = document.getElementById('accName').value.trim();
+  if (!newName){ showAccountMsg('nameMsg', 'Escribe tu nombre.', false); return; }
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { error } = await sb.from('profiles').update({ full_name: newName }).eq('id', currentUser.id);
+  btn.disabled = false; btn.textContent = 'Guardar nombre';
+
+  if (error){
+    showAccountMsg('nameMsg', 'No se pudo guardar. Intenta de nuevo.', false);
+    return;
+  }
+  showAccountMsg('nameMsg', '¡Listo! Tu nombre quedó actualizado.', true);
+  document.getElementById('greetTitle').textContent = 'Hola, ' + newName.split(' ')[0] + ' 👋';
+  document.getElementById('whoName').textContent = newName;
+});
+
+// --- Cambiar contraseña ---
+document.getElementById('btnSavePw').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSavePw');
+  const current = document.getElementById('pwCurrent').value;
+  const pw1 = document.getElementById('pwNew1').value;
+  const pw2 = document.getElementById('pwNew2').value;
+
+  if (!current){ showAccountMsg('pwMsg', 'Escribe tu contraseña actual.', false); return; }
+  if (pw1.length < 6){ showAccountMsg('pwMsg', 'La contraseña nueva debe tener al menos 6 caracteres.', false); return; }
+  if (pw1 !== pw2){ showAccountMsg('pwMsg', 'Las contraseñas nuevas no coinciden.', false); return; }
+
+  btn.disabled = true; btn.textContent = 'Verificando...';
+
+  // Primero confirma que la contraseña ACTUAL es correcta antes de cambiarla.
+  const { error: signInErr } = await sb.auth.signInWithPassword({ email: currentUser.email, password: current });
+  if (signInErr){
+    btn.disabled = false; btn.textContent = 'Cambiar contraseña';
+    showAccountMsg('pwMsg', 'Tu contraseña actual no es correcta.', false);
+    return;
+  }
+
+  btn.textContent = 'Guardando...';
+  const { error: updateErr } = await sb.auth.updateUser({ password: pw1 });
+  btn.disabled = false; btn.textContent = 'Cambiar contraseña';
+
+  if (updateErr){
+    showAccountMsg('pwMsg', 'No se pudo cambiar la contraseña. Intenta de nuevo.', false);
+    return;
+  }
+  document.getElementById('pwCurrent').value = '';
+  document.getElementById('pwNew1').value = '';
+  document.getElementById('pwNew2').value = '';
+  showAccountMsg('pwMsg', '¡Listo! Tu contraseña quedó actualizada.', true);
+});
+
+// --- Cambiar correo electrónico (código de 6 dígitos al correo nuevo) ---
+async function callEmailChangeFn(url, body){
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+let pendingNewEmail = '';
+
+document.getElementById('btnSendEmailCode').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSendEmailCode');
+  const newEmail = document.getElementById('emailNew').value.trim().toLowerCase();
+  if (!newEmail || !newEmail.includes('@')){
+    showAccountMsg('emailMsg', 'Escribe un correo válido.', false);
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const data = await callEmailChangeFn(EMAIL_CHANGE_REQUEST_URL, { newEmail });
+    btn.disabled = false; btn.textContent = 'Enviar código al correo nuevo';
+
+    if (data.error === 'email_taken'){
+      showAccountMsg('emailMsg', 'Ese correo ya tiene una cuenta en la plataforma.', false);
+      return;
+    }
+    if (data.error === 'same_email'){
+      showAccountMsg('emailMsg', 'Ese ya es tu correo actual.', false);
+      return;
+    }
+    if (!data.ok){
+      showAccountMsg('emailMsg', 'Algo salió mal. Intenta de nuevo.', false);
+      return;
+    }
+
+    pendingNewEmail = newEmail;
+    document.getElementById('emailStep1').style.display = 'none';
+    document.getElementById('emailStep2').style.display = 'block';
+    showAccountMsg('emailMsg', 'Te mandamos un código a ' + newEmail + '.', true);
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Enviar código al correo nuevo';
+    showAccountMsg('emailMsg', 'No se pudo conectar. Intenta de nuevo.', false);
+  }
+});
+
+document.getElementById('btnResendEmailCode').addEventListener('click', async () => {
+  const btn = document.getElementById('btnResendEmailCode');
+  btn.disabled = true;
+  try {
+    await callEmailChangeFn(EMAIL_CHANGE_REQUEST_URL, { newEmail: pendingNewEmail });
+    showAccountMsg('emailMsg', 'Te mandamos un código nuevo.', true);
+  } catch (err) {
+    showAccountMsg('emailMsg', 'No se pudo reenviar. Intenta de nuevo.', false);
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('btnConfirmEmailCode').addEventListener('click', async () => {
+  const btn = document.getElementById('btnConfirmEmailCode');
+  const code = document.getElementById('emailCode').value.trim();
+  if (code.length !== 6){
+    showAccountMsg('emailMsg', 'El código debe tener 6 dígitos.', false);
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Confirmando...';
+  try {
+    const data = await callEmailChangeFn(EMAIL_CHANGE_CONFIRM_URL, { code });
+    btn.disabled = false; btn.textContent = 'Confirmar correo nuevo';
+
+    if (!data.ok){
+      showAccountMsg('emailMsg', 'Ese código no es válido o ya expiró. Pide uno nuevo.', false);
+      return;
+    }
+
+    showAccountMsg('emailMsg', '¡Listo! Tu correo quedó actualizado a ' + data.newEmail + '. La próxima vez, inicia sesión con este correo nuevo. Vamos a cerrar tu sesión en unos segundos...', true);
+    document.getElementById('emailCurrentHint').textContent = 'Tu correo actual: ' + data.newEmail;
+    setTimeout(async () => {
+      await sb.auth.signOut();
+      window.location.href = 'login.html';
+    }, 4000);
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Confirmar correo nuevo';
+    showAccountMsg('emailMsg', 'No se pudo conectar. Intenta de nuevo.', false);
+  }
+});
 
 init();
 </script>
