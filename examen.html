@@ -151,13 +151,20 @@ let examConfigs = [];      // todas las configuraciones del curso (6 capítulo +
 let myStatsByConfig = {};  // exam_config_id -> { latest:{score_pct,passed}, count, passedCount, failedCount }
 
 // ---- estado del examen en curso ----
-let attempt = null;        // { attempt_id, mode, time_limit_minutes, started_at, questions }
+let attempt = null;        // { attempt_id, mode, time_limit_minutes, started_at, break_after_question, questions }
 let activeConfig = null;
 let curIndex = 0;
 let answeredState = {};    // question_id -> { selected_option_ids, is_correct, correct_option_ids, explanation } (solo modos con feedback)
 let realAnswers = {};      // question_id -> selected_option_ids (solo modo real)
 let timerInterval = null;
 let finishing = false;
+
+// ---- pausa obligatoria de 5 minutos en el examen final (solo si attempt.break_after_question viene con número) ----
+let examDeadline = null;       // hora límite del cronómetro principal (se puede extender por la pausa)
+let breakTaken = false;        // si ya se mostró/pasó la pausa obligatoria en este intento
+let breakInterval = null;
+let breakStartedAt = null;
+let pendingIdxAfterBreak = null;
 
 function showGateMessage(html, showLogout){
   document.getElementById('gate').innerHTML = `
@@ -394,10 +401,17 @@ window.startExam = async function(examConfigId, mode){
     answeredState = {};
     realAnswers = {};
     finishing = false;
+    breakTaken = false;
+    pendingIdxAfterBreak = null;
+    breakStartedAt = null;
+    if (breakInterval){ clearInterval(breakInterval); breakInterval = null; }
     window.addEventListener('beforeunload', beforeUnloadWarn);
     renderQuestion();
     if (attempt.time_limit_minutes){
-      startTimer(new Date(attempt.started_at).getTime() + attempt.time_limit_minutes * 60000);
+      examDeadline = new Date(attempt.started_at).getTime() + attempt.time_limit_minutes * 60000;
+      startTimer(examDeadline);
+    } else {
+      examDeadline = null;
     }
   } catch(e){
     document.getElementById('wrap').innerHTML = `<div class="empty-note">Error de conexión. Intenta de nuevo.<br><br><button class="btn" onclick="renderHub()">← Volver</button></div>`;
@@ -556,8 +570,72 @@ window.onOptionChange = function(questionId, optionId, isMulti){
 
 window.jumpTo = function(idx){
   if (idx < 0 || idx >= attempt.questions.length) return;
+  // Pausa obligatoria de 5 minutos: si esta pregunta ya está en la segunda
+  // parte del examen final (bloque después de break_after_question) y
+  // todavía no se ha mostrado la pausa en este intento, se muestra primero
+  // sin importar por dónde se intentó llegar (Siguiente, grid, etc.).
+  if (attempt.break_after_question && !breakTaken && idx >= attempt.break_after_question){
+    pendingIdxAfterBreak = idx;
+    showBreakScreen();
+    return;
+  }
   curIndex = idx;
   renderQuestion();
+};
+
+// ============================================================================
+// PAUSA OBLIGATORIA (solo examen final, cuando attempt.break_after_question
+// viene con número) — 5 minutos entre la primera y la segunda parte, con
+// botón para saltarla antes si el alumno no la necesita. El cronómetro
+// principal se detiene visualmente mientras dura y se reanuda después,
+// extendiendo la hora límite exactamente por el tiempo que duró la pausa
+// (para que esos minutos no se descuenten de las 2 horas del examen).
+// ============================================================================
+function showBreakScreen(){
+  stopTimer();
+  document.getElementById('timerBox').innerHTML = '<span class="timer">⏸ En pausa</span>';
+  document.getElementById('topTitle').textContent = activeConfig.title;
+  breakStartedAt = Date.now();
+  const breakDeadline = breakStartedAt + 5 * 60 * 1000;
+
+  function renderBreak(){
+    const msLeft = breakDeadline - Date.now();
+    const secLeft = Math.max(0, Math.ceil(msLeft / 1000));
+    const m = Math.floor(secLeft / 60);
+    const s = secLeft % 60;
+    document.getElementById('wrap').innerHTML = `
+      <div class="result-hero">
+        <div class="tag" style="background:#EAF0FB;color:var(--blue);">PAUSA OBLIGATORIA</div>
+        <div class="big" style="color:var(--navy);">${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
+        <p>Completaste la primera parte del examen (preguntas 1 a ${attempt.break_after_question} de ${attempt.questions.length}). Tómate estos 5 minutos antes de continuar con la segunda parte.<br><br>El cronómetro del examen está en pausa — no corre durante este descanso.</p>
+        <div class="result-actions">
+          <button class="btn primary" onclick="endBreak()">Saltar pausa y continuar</button>
+        </div>
+      </div>`;
+    if (msLeft <= 0 && breakInterval){
+      clearInterval(breakInterval);
+      breakInterval = null;
+      endBreak();
+    }
+  }
+  renderBreak();
+  breakInterval = setInterval(renderBreak, 1000);
+}
+
+window.endBreak = function(){
+  if (breakInterval){ clearInterval(breakInterval); breakInterval = null; }
+  breakTaken = true;
+  if (examDeadline && breakStartedAt){
+    examDeadline += (Date.now() - breakStartedAt);
+  }
+  breakStartedAt = null;
+  const idx = pendingIdxAfterBreak != null ? pendingIdxAfterBreak : attempt.break_after_question;
+  pendingIdxAfterBreak = null;
+  curIndex = idx;
+  renderQuestion();
+  if (examDeadline){
+    startTimer(examDeadline);
+  }
 };
 
 window.submitAnswer = async function(questionId){
