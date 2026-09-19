@@ -1404,45 +1404,75 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
 
       // Borra TODO el contenido viejo del curso (capítulos, lecciones y
       // cuestionarios) antes de volver a crearlo desde el formulario.
-      // Se hace explícito, tabla por tabla, revisando el error de cada
-      // paso — en vez de confiar en que borrar "chapters" arrastre en
-      // cascada a las demás — para que si algo no se puede borrar (por
-      // ejemplo, por un permiso que falte), se vea el error de verdad en
-      // vez de quedar contenido duplicado sin que nadie se dé cuenta.
+      // Se hace explícito, tabla por tabla, y usando ".select('id')" en
+      // cada borrado para poder CONTAR cuántas filas se borraron de
+      // verdad — no basta con revisar si hubo "error", porque un permiso
+      // de RLS que falte no da error: deja pasar el DELETE pero lo filtra
+      // a 0 filas borradas, en silencio. Si el número de filas borradas no
+      // coincide con las que había, se detiene todo el guardado ANTES de
+      // insertar nada nuevo, para no volver a duplicar contenido.
+      const stopWithError = (text) => { msgEl.textContent = text; msgEl.className = 'msg-inline error show'; };
+
       const { data: oldChapters, error: oldChErr } = await sb.from('chapters').select('id').eq('course_id', courseId);
-      if (oldChErr){ msgEl.textContent = 'Error al leer los capítulos existentes: ' + oldChErr.message; msgEl.className='msg-inline error show'; return; }
+      if (oldChErr){ stopWithError('Error al leer los capítulos existentes: ' + oldChErr.message); return; }
       const oldChapterIds = (oldChapters || []).map(c => c.id);
 
       if (oldChapterIds.length){
         const { data: oldLessons, error: oldLErr } = await sb.from('lessons').select('id').in('chapter_id', oldChapterIds);
-        if (oldLErr){ msgEl.textContent = 'Error al leer las lecciones existentes: ' + oldLErr.message; msgEl.className='msg-inline error show'; return; }
+        if (oldLErr){ stopWithError('Error al leer las lecciones existentes: ' + oldLErr.message); return; }
         const oldLessonIds = (oldLessons || []).map(l => l.id);
 
         if (oldLessonIds.length){
           const { data: oldQuizzes, error: oldQzErr } = await sb.from('quizzes').select('id').in('lesson_id', oldLessonIds);
-          if (oldQzErr){ msgEl.textContent = 'Error al leer los cuestionarios existentes: ' + oldQzErr.message; msgEl.className='msg-inline error show'; return; }
+          if (oldQzErr){ stopWithError('Error al leer los cuestionarios existentes: ' + oldQzErr.message); return; }
           const oldQuizIds = (oldQuizzes || []).map(q => q.id);
 
           if (oldQuizIds.length){
             const { data: oldQuestions, error: oldQErr } = await sb.from('quiz_questions').select('id').in('quiz_id', oldQuizIds);
-            if (oldQErr){ msgEl.textContent = 'Error al leer las preguntas existentes: ' + oldQErr.message; msgEl.className='msg-inline error show'; return; }
+            if (oldQErr){ stopWithError('Error al leer las preguntas existentes: ' + oldQErr.message); return; }
             const oldQuestionIds = (oldQuestions || []).map(q => q.id);
 
             if (oldQuestionIds.length){
-              const { error: delOptErr } = await sb.from('quiz_options').delete().in('question_id', oldQuestionIds);
-              if (delOptErr){ msgEl.textContent = 'Error al borrar opciones de cuestionarios viejos: ' + delOptErr.message; msgEl.className='msg-inline error show'; return; }
+              const { data: oldOptions, error: oldOptSelErr } = await sb.from('quiz_options').select('id').in('question_id', oldQuestionIds);
+              if (oldOptSelErr){ stopWithError('Error al leer las opciones existentes: ' + oldOptSelErr.message); return; }
+              const oldOptionIds = (oldOptions || []).map(o => o.id);
+
+              if (oldOptionIds.length){
+                const { data: delOptRows, error: delOptErr } = await sb.from('quiz_options').delete().in('question_id', oldQuestionIds).select('id');
+                if (delOptErr){ stopWithError('Error al borrar opciones de cuestionarios viejos: ' + delOptErr.message); return; }
+                if ((delOptRows||[]).length !== oldOptionIds.length){
+                  stopWithError('No se pudieron borrar todas las opciones de cuestionarios viejos (se borraron ' + (delOptRows||[]).length + ' de ' + oldOptionIds.length + ' — probablemente falta un permiso en Supabase). NO se guardó nada para no duplicar contenido — corre primero el SQL de permisos y vuelve a intentar.');
+                  return;
+                }
+              }
             }
-            const { error: delQErr } = await sb.from('quiz_questions').delete().in('quiz_id', oldQuizIds);
-            if (delQErr){ msgEl.textContent = 'Error al borrar preguntas de cuestionarios viejos: ' + delQErr.message; msgEl.className='msg-inline error show'; return; }
+            const { data: delQRows, error: delQErr } = await sb.from('quiz_questions').delete().in('quiz_id', oldQuizIds).select('id');
+            if (delQErr){ stopWithError('Error al borrar preguntas de cuestionarios viejos: ' + delQErr.message); return; }
+            if ((delQRows||[]).length !== oldQuestionIds.length){
+              stopWithError('No se pudieron borrar todas las preguntas de cuestionarios viejos (se borraron ' + (delQRows||[]).length + ' de ' + oldQuestionIds.length + ' — probablemente falta un permiso en Supabase). NO se guardó nada para no duplicar contenido — corre primero el SQL de permisos y vuelve a intentar.');
+              return;
+            }
           }
-          const { error: delQuizErr } = await sb.from('quizzes').delete().in('lesson_id', oldLessonIds);
-          if (delQuizErr){ msgEl.textContent = 'Error al borrar cuestionarios viejos: ' + delQuizErr.message; msgEl.className='msg-inline error show'; return; }
+          const { data: delQuizRows, error: delQuizErr } = await sb.from('quizzes').delete().in('lesson_id', oldLessonIds).select('id');
+          if (delQuizErr){ stopWithError('Error al borrar cuestionarios viejos: ' + delQuizErr.message); return; }
+          if ((delQuizRows||[]).length !== oldQuizIds.length){
+            stopWithError('No se pudieron borrar todos los cuestionarios viejos (se borraron ' + (delQuizRows||[]).length + ' de ' + oldQuizIds.length + ' — probablemente falta un permiso en Supabase). NO se guardó nada para no duplicar contenido — corre primero el SQL de permisos y vuelve a intentar.');
+            return;
+          }
         }
-        const { error: delLessonErr } = await sb.from('lessons').delete().in('chapter_id', oldChapterIds);
-        if (delLessonErr){ msgEl.textContent = 'Error al borrar lecciones viejas: ' + delLessonErr.message; msgEl.className='msg-inline error show'; return; }
+        const { data: delLessonRows, error: delLessonErr } = await sb.from('lessons').delete().in('chapter_id', oldChapterIds).select('id');
+        if (delLessonErr){ stopWithError('Error al borrar lecciones viejas: ' + delLessonErr.message); return; }
+        if (delLessonRows.length !== oldLessonIds.length){
+          stopWithError('No se pudieron borrar todas las lecciones viejas (se borraron ' + delLessonRows.length + ' de ' + oldLessonIds.length + ' — probablemente falta un permiso en Supabase). NO se guardó nada para no duplicar contenido — corre primero el SQL de permisos y vuelve a intentar.');
+          return;
+        }
       }
-      const { error: delChErr } = await sb.from('chapters').delete().eq('course_id', courseId);
-      if (delChErr){ msgEl.textContent = 'Error al borrar capítulos viejos: ' + delChErr.message; msgEl.className='msg-inline error show'; return; }
+      const { data: delChRows, error: delChErr } = await sb.from('chapters').delete().eq('course_id', courseId).select('id');
+      if (delChErr){ stopWithError('Error al borrar capítulos viejos: ' + delChErr.message); return; }
+      if (delChRows.length !== oldChapterIds.length){
+        stopWithError('No se pudieron borrar todos los capítulos viejos (se borraron ' + delChRows.length + ' de ' + oldChapterIds.length + ' — probablemente falta un permiso en Supabase). NO se guardó nada para no duplicar contenido — corre primero el SQL de permisos (01_sql_permiso_borrar_capitulos.sql) y vuelve a intentar.');
+        return;
+      }
     } else {
       const { data, error } = await sb.from('courses').insert(payload).select().single();
       if (error){ msgEl.textContent = 'Error al guardar: ' + error.message; msgEl.className='msg-inline error show'; return; }
