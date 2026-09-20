@@ -682,7 +682,6 @@
             <button type="submit" class="btn-primary" style="width:auto; padding:10px 20px;">Subir</button>
           </form>
           <div class="msg" id="mcDocMsg"></div>
-          <div id="mc-documentos-list"></div>
         </div>
 
         <div id="mc-tab-banco" class="mc-tab-content dash-card" style="display:none;">
@@ -3685,7 +3684,9 @@
     document.querySelectorAll('.mc-tab-content').forEach(el => el.style.display = 'none');
     document.getElementById('mc-tab-' + tab).style.display = 'block';
     document.querySelectorAll('.mc-tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mctab === tab));
-    if(tab === 'documentos' && currentProfile) loadAgentDocumentsInto(currentProfile.id, 'mc-documentos-list', 'mcDocMsg');
+    // Ya no cargamos la lista de documentos aquí — el agente solo ve la
+    // confirmación de que subió el archivo, no el listado (eso lo ve la
+    // administradora desde el perfil del agente en Usuarios).
     if(tab === 'banco' && currentProfile) loadMiCuentaBanco();
     if(tab === 'pagina' && currentProfile) loadMiPagina();
     if(tab === 'licencias' && currentProfile) loadMisLicencias();
@@ -4066,8 +4067,12 @@
       })));
     }
 
-    showMsg('mpPaginaMsg', 'success', 'Tu página se guardó correctamente.');
+    // Ojo: loadMiPagina() borra el contenido de mpPaginaMsg apenas arranca
+    // (para limpiar mensajes viejos al abrir la pestaña) — por eso el
+    // mensaje de éxito tiene que ponerse DESPUÉS de que loadMiPagina()
+    // termine, nunca antes, o se borra solo sin que la persona lo alcance a ver.
     await loadMiPagina();
+    showMsg('mpPaginaMsg', 'success', '✔ Tu página se guardó correctamente.');
   }
 
   function renderMpLicensesList(licenses){
@@ -8943,6 +8948,12 @@
   // (agent_alerts — antes no se mostraban en ningún lado del dashboard del
   // agente, solo existían en la vista de la administradora; ver
   // migracion_alertas_agente_documentos.sql para el arreglo de permisos.)
+  //
+  // Estas son alertas de "emergencia": el agente NO las puede cerrar por su
+  // cuenta, ni siquiera subiendo el documento pedido — solo desaparecen
+  // cuando la administradora las revisa y les da el visto bueno desde el
+  // perfil del agente en Usuarios. Si ya subió el documento, se le avisa
+  // aquí mismo que quedó recibido y está esperando esa revisión.
   async function loadDashboardAgentAlerts(){
     if(!currentProfile) return;
     const { data: alerts, error } = await sb.from('agent_alerts')
@@ -8962,16 +8973,18 @@
     list.innerHTML = alerts.map(a => `
       <div style="padding:10px 0; border-bottom:1px solid #F3C6C6;">
         <p style="margin:0 0 6px;">${escapeHtml(a.message)}</p>
-        ${a.requires_document ? `
-          <div style="background:#fff; border:1px solid #F3C6C6; border-radius:10px; padding:10px 12px; margin-top:6px;">
-            <label style="font-size:12.5px; font-weight:700; color:#8a3030;">📎 Necesitamos: ${escapeHtml(a.document_label || 'un documento')}</label>
-            <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
-              <input type="file" id="dash-alert-file-${a.id}" style="flex:1; min-width:180px;">
-              <button class="btn-primary" style="width:auto; padding:8px 14px;" onclick="uploadAgentAlertResponse('${a.id}')">Subir</button>
-            </div>
-            <div class="msg" id="dash-alert-msg-${a.id}" style="margin-top:6px;"></div>
-          </div>
-        ` : `<button class="btn-ghost" style="width:auto; padding:6px 12px;" onclick="resolveMyOwnAlert('${a.id}')">Ya lo hice</button>`}
+        ${a.requires_document ? (
+          a.response_storage_path
+            ? `<div style="background:#fff; border:1px solid #F3C6C6; border-radius:10px; padding:10px 12px; margin-top:6px; font-size:13px; color:#8a3030;">✔ Ya subiste el documento — está esperando revisión de la administradora.</div>`
+            : `<div style="background:#fff; border:1px solid #F3C6C6; border-radius:10px; padding:10px 12px; margin-top:6px;">
+                <label style="font-size:12.5px; font-weight:700; color:#8a3030;">📎 Necesitamos: ${escapeHtml(a.document_label || 'un documento')}</label>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+                  <input type="file" id="dash-alert-file-${a.id}" style="flex:1; min-width:180px;">
+                  <button class="btn-primary" style="width:auto; padding:8px 14px;" onclick="uploadAgentAlertResponse('${a.id}')">Subir</button>
+                </div>
+                <div class="msg" id="dash-alert-msg-${a.id}" style="margin-top:6px;"></div>
+              </div>`
+        ) : ''}
       </div>
     `).join('');
   }
@@ -8991,23 +9004,21 @@
       if(msg){ msg.className = 'msg error'; msg.textContent = 'No se pudo subir: ' + upErr.message; }
       return;
     }
+    // No se marca resolved aquí a propósito — el agente puede subir el
+    // documento, pero solo la administradora cierra la alerta después de
+    // revisarlo (con "Dar el visto bueno" en el perfil del agente).
     const { error } = await sb.from('agent_alerts').update({
       response_storage_path: path,
       response_file_name: file.name,
-      responded_at: new Date().toISOString(),
-      resolved: true,
-      resolved_at: new Date().toISOString()
+      responded_at: new Date().toISOString()
     }).eq('id', alertId);
     if(error){
       if(msg){ msg.className = 'msg error'; msg.textContent = 'Se subió el archivo, pero no se pudo actualizar la alerta: ' + error.message; }
       return;
     }
-    await loadDashboardAgentAlerts();
-  }
-
-  async function resolveMyOwnAlert(alertId){
-    const { error } = await sb.from('agent_alerts').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', alertId);
-    if(error){ alert('No se pudo actualizar: ' + error.message); return; }
+    // No hace falta un mensaje aparte aquí — al recargar, la tarjeta misma
+    // cambia a "Ya subiste el documento — esperando revisión", que ya es la
+    // confirmación.
     await loadDashboardAgentAlerts();
   }
 
@@ -9050,6 +9061,20 @@
       activos = activos.filter(a => a.client.assigned_agent_id === currentProfile.id);
     }
 
+    // "Quitar por hoy": igual que las renovaciones — se puede sacar del
+    // dashboard sin desactivar la alerta de verdad; vuelve a aparecer sola
+    // pasadas 24h (o al día siguiente), o antes si alguien la vuelve a activar.
+    const { data: { session } } = await sb.auth.getSession();
+    if(session){
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: dismissals } = await sb.from('client_alert_dismissals')
+        .select('client_alert_id')
+        .eq('user_id', session.user.id)
+        .gte('dismissed_at', cutoff);
+      const dismissedIds = new Set((dismissals || []).map(d => d.client_alert_id));
+      activos = activos.filter(a => !dismissedIds.has(a.id));
+    }
+
     activos.sort((a, b) => (a.client.full_name || '').localeCompare(b.client.full_name || ''));
 
     if(error || activos.length === 0){
@@ -9058,11 +9083,26 @@
     }
     card.style.display = 'block';
     list.innerHTML = activos.map(a => `
-      <div style="padding:8px 0; border-bottom:1px solid #E1D6F2; cursor:pointer;" onclick="goToClientFromUnderwriting('${a.client_id}')">
-        <strong>${a.client ? a.client.full_name : 'Cliente'}</strong> — ${describeAlertSchedule(a)}
-        <div class="sub" style="margin-top:2px;">${escapeHtml(a.note)}</div>
+      <div style="padding:8px 0; border-bottom:1px solid #E1D6F2; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div style="cursor:pointer; flex:1;" onclick="goToClientFromUnderwriting('${a.client_id}')">
+          <strong>${a.client ? a.client.full_name : 'Cliente'}</strong> — ${describeAlertSchedule(a)}
+          <div class="sub" style="margin-top:2px;">${escapeHtml(a.note)}</div>
+        </div>
+        <button class="btn-ghost" style="width:auto; padding:6px 10px; flex-shrink:0;" onclick="dismissFollowup('${a.id}', event)">Quitar por hoy</button>
       </div>
     `).join('');
+  }
+
+  async function dismissFollowup(clientAlertId, evt){
+    if(evt) evt.stopPropagation();
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session) return;
+    await sb.from('client_alert_dismissals').upsert({
+      client_alert_id: clientAlertId,
+      user_id: session.user.id,
+      dismissed_at: new Date().toISOString()
+    }, { onConflict: 'client_alert_id,user_id' });
+    await loadDashboardFollowups();
   }
 
   // ---- Próximas renovaciones ----
@@ -10389,9 +10429,11 @@
     });
     if(dbError){ showMsg('mcDocMsg','error','El archivo se subió pero no se pudo registrar: ' + dbError.message); return; }
 
-    showMsg('mcDocMsg','success','Documento subido.');
+    // El agente ya no ve la lista de lo que ha subido — solo la confirmación
+    // de que se subió. La administradora sí ve el listado completo, desde el
+    // perfil del agente en Usuarios (ud-documentos-list / loadAgentDocuments).
+    showMsg('mcDocMsg','success','✔ Documento subido exitosamente.');
     document.getElementById('mc-uploadDocForm').reset();
-    await loadAgentDocumentsInto(currentProfile.id, 'mc-documentos-list', 'mcDocMsg');
   });
 
   async function deleteAgentDocument(id, storagePath, agentId, containerId, msgId){
@@ -10449,15 +10491,19 @@
       container.innerHTML = '<p class="sub">No hay alertas para este agente.</p>';
       return;
     }
-    container.innerHTML = alerts.map(a => `
+    container.innerHTML = alerts.map(a => {
+      const estado = a.resolved ? 'Resuelta' : (a.response_storage_path ? 'Documento recibido' : 'Pendiente');
+      const estadoClass = a.resolved ? 'active' : (a.response_storage_path ? 'pending' : 'gray');
+      return `
       <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); gap:10px; flex-wrap:wrap;">
         <div>
           <p style="margin:0;">${escapeHtml(a.message)}${a.requires_document ? ` <span class="badge" style="background:#FDEAEA; color:#8a3030;">📎 Pide: ${escapeHtml(a.document_label || 'documento')}</span>` : ''}</p>
-          <div style="font-size:12px; color:var(--slate-light);">${formatDateTimeUS(a.created_at)} — <span class="badge ${a.resolved ? 'active' : 'gray'}">${a.resolved ? 'Resuelta' : 'Pendiente'}</span>${a.response_storage_path ? ` — <a href="javascript:void(0)" onclick="viewAgentAlertResponse('${a.response_storage_path}')">Ver lo que subió ↗</a>` : ''}</div>
+          <div style="font-size:12px; color:var(--slate-light);">${formatDateTimeUS(a.created_at)} — <span class="badge ${estadoClass}">${estado}</span>${a.response_storage_path ? ` — <a href="javascript:void(0)" onclick="viewAgentAlertResponse('${a.response_storage_path}')">Ver lo que subió ↗</a>` : ''}</div>
         </div>
-        ${!a.resolved ? `<button class="btn-ghost" style="width:auto; padding:6px 10px;" onclick="resolveAgentAlert('${a.id}')">Marcar resuelta</button>` : ''}
+        ${!a.resolved ? `<button class="btn-primary" style="width:auto; padding:6px 12px;" onclick="approveAgentAlert('${a.id}')">Dar el visto bueno</button>` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   document.getElementById('ud-alertForm').addEventListener('submit', async function(e){
@@ -10484,7 +10530,8 @@
     await loadAgentAlerts(currentUserDetailId);
   });
 
-  async function resolveAgentAlert(id){
+  async function approveAgentAlert(id){
+    if(!confirm('¿Dar el visto bueno a esta alerta? Se cierra y desaparece del dashboard del agente.')) return;
     const { error } = await sb.from('agent_alerts').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', id);
     if(error){ alert('No se pudo actualizar: ' + error.message); return; }
     await loadAgentAlerts(currentUserDetailId);
