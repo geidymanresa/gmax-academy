@@ -603,7 +603,35 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let editingCourseId = null;
+let editingCouponId = null;
 let chapterCount = 0;
+
+// ---------- Sincronización con Stripe (precios y cupones) ----------
+// Se llama después de guardar un curso, un material, o un cupón, para que
+// quede reflejado también dentro de Stripe — así el campo de "Add
+// promotion code" de la pantalla de pago funciona con lo que se configura
+// aquí. Si algo falla, el curso/material/cupón YA se guardó bien en tu
+// base de datos (esto solo avisa que falta sincronizar con Stripe).
+async function syncToStripe(action, id){
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-catalog-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, id })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || data.error){
+      console.error('Error sincronizando con Stripe:', data.error);
+      toast('Se guardó, pero no se pudo sincronizar con Stripe: ' + (data.error || 'error desconocido'), true);
+    }
+  } catch(e){
+    console.error('Error sincronizando con Stripe:', e);
+    toast('Se guardó, pero no se pudo sincronizar con Stripe.', true);
+  }
+}
 
 function toast(msg, isError){
   const t = document.getElementById('toast');
@@ -1645,6 +1673,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     toast('Curso guardado ✓');
     loadCourses();
     loadDashboard();
+    if (courseId) syncToStripe('sync_course', courseId);
   } catch (e){
     document.getElementById('courseMsg').textContent = 'Error inesperado: ' + e.message;
     document.getElementById('courseMsg').className = 'msg-inline error show';
@@ -1679,7 +1708,11 @@ async function loadCoupons(){
       <td>${c.courses ? c.courses.title : c.materials ? c.materials.title : 'Todo'}</td>
       <td>${c.used_count}${c.max_uses ? ' / '+c.max_uses : ''}</td>
       <td>${c.expires_at ? formatDate(c.expires_at) : 'Sin expiración'}</td>
-      <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${c.id}', ${c.active})">${c.active ? 'Desactivar' : 'Activar'}</button></td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="editCoupon('${c.id}')">Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${c.id}', ${c.active})">${c.active ? 'Desactivar' : 'Activar'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteCoupon('${c.id}', ${c.used_count})">Eliminar</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -1689,10 +1722,42 @@ window.toggleCoupon = async function(id, active){
   await sb.from('coupons').update({ active: !active }).eq('id', id);
   toast('Cupón actualizado ✓');
   loadCoupons();
+  syncToStripe('toggle_coupon_active', id);
+};
+
+window.editCoupon = async function(id){
+  const { data: c, error } = await sb.from('coupons').select('*').eq('id', id).single();
+  if (error || !c){ toast('No se pudo cargar el cupón', true); return; }
+  editingCouponId = id;
+  document.querySelector('#couponModal h2').textContent = 'Editar cupón';
+  document.getElementById('couponCode').value = c.code;
+  document.getElementById('couponType').value = c.discount_type;
+  document.getElementById('couponValue').value = c.discount_value;
+  document.getElementById('couponCourse').value = c.course_id ? ('course:'+c.course_id) : (c.material_id ? ('material:'+c.material_id) : '');
+  document.getElementById('couponMaxUses').value = c.max_uses ?? '';
+  document.getElementById('couponExpires').value = c.expires_at ?? '';
+  document.getElementById('couponMsg').className = 'msg-inline';
+  couponModal.classList.add('open');
+};
+
+window.deleteCoupon = async function(id, usedCount){
+  if (usedCount > 0){
+    alert('Este cupón ya se usó ' + usedCount + ' vez/veces — no se puede eliminar (así no se pierde el historial de esas órdenes). Puedes "Desactivarlo" en su lugar para que ya nadie más lo pueda usar.');
+    return;
+  }
+  if (!confirm('¿Eliminar este cupón? Esta acción no se puede deshacer.')) return;
+  await syncToStripe('delete_coupon', id);
+  const { error } = await sb.from('coupons').delete().eq('id', id);
+  if (error){ toast('Error al eliminar: ' + error.message, true); return; }
+  toast('Cupón eliminado ✓');
+  loadCoupons();
+  loadDashboard();
 };
 
 const couponModal = document.getElementById('couponModal');
 document.getElementById('newCouponBtn').addEventListener('click', ()=>{
+  editingCouponId = null;
+  document.querySelector('#couponModal h2').textContent = 'Nuevo cupón';
   document.getElementById('couponCode').value='';
   document.getElementById('couponType').value='percent';
   document.getElementById('couponValue').value='';
@@ -1717,16 +1782,29 @@ document.getElementById('saveCouponBtn').addEventListener('click', async ()=>{
 
   if (!code){ msgEl.textContent='El código es obligatorio.'; msgEl.className='msg-inline error show'; return; }
 
-  const { error } = await sb.from('coupons').insert({
+  const payload = {
     code, discount_type: type, discount_value: value, course_id: courseId, material_id: materialId,
-    max_uses: maxUses, expires_at: expires, created_by: currentUser.id
-  });
+    max_uses: maxUses, expires_at: expires
+  };
+
+  let couponId = editingCouponId;
+  let error;
+  if (editingCouponId){
+    ({ error } = await sb.from('coupons').update(payload).eq('id', editingCouponId));
+  } else {
+    const { data, error: insErr } = await sb.from('coupons')
+      .insert({ ...payload, created_by: currentUser.id, active: true })
+      .select().single();
+    error = insErr;
+    if (data) couponId = data.id;
+  }
   if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className='msg-inline error show'; return; }
 
   couponModal.classList.remove('open');
-  toast('Cupón creado ✓');
+  toast('Cupón guardado ✓');
   loadCoupons();
   loadDashboard();
+  if (couponId) await syncToStripe('sync_coupon', couponId);
 });
 
 // ---------- RECURSOS GRATIS ----------
@@ -1989,17 +2067,20 @@ document.getElementById('saveMaterialBtn').addEventListener('click', async ()=>{
 
   const payload = { title, description: desc, thumbnail_url: thumbnail, content_type: contentType, price_cents: Math.round(price*100), status, file_url: fileUrl };
 
-  let error;
+  let error, materialId = editingMaterialId;
   if (editingMaterialId){
     ({ error } = await sb.from('materials').update(payload).eq('id', editingMaterialId));
   } else {
-    ({ error } = await sb.from('materials').insert(payload));
+    const { data, error: insErr } = await sb.from('materials').insert(payload).select().single();
+    error = insErr;
+    if (data) materialId = data.id;
   }
   if (error){ msgEl.textContent = 'Error: ' + error.message; msgEl.className = 'msg-inline error show'; return; }
 
   materialModal.classList.remove('open');
   toast('Material guardado ✓');
   loadMaterials();
+  if (materialId) syncToStripe('sync_material', materialId);
 });
 
 
