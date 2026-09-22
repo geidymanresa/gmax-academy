@@ -603,7 +603,14 @@
     <div class="cart-items" id="cartItems"></div>
     <div class="cart-foot">
       <div class="cart-total-row"><span>Total</span><span id="cartTotal">$0</span></div>
-      <button class="btn btn-primary" id="checkoutBtn" style="width:100%;justify-content:center;margin-top:12px;" onclick="checkoutCart()">Proceder al pago</button>
+      <div style="margin-top:14px;">
+        <label for="checkoutEmail" style="display:block;font-size:12px;color:var(--slate);margin-bottom:5px;">Correo electrónico</label>
+        <input type="email" id="checkoutEmail" placeholder="tu@correo.com" autocomplete="email" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:10px;box-sizing:border-box;">
+        <label for="checkoutEmailConfirm" style="display:block;font-size:12px;color:var(--slate);margin-bottom:5px;">Confirmar correo electrónico</label>
+        <input type="email" id="checkoutEmailConfirm" placeholder="Escríbelo de nuevo" autocomplete="off" onpaste="return false;" ondrop="return false;" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:4px;box-sizing:border-box;">
+        <div style="font-size:11.5px;color:var(--slate);margin-bottom:2px;">Escríbelo de nuevo sin copiar y pegar — así evitamos que un correo mal escrito pase sin darnos cuenta. Ahí te llegará el acceso al curso y el recibo de tu compra.</div>
+      </div>
+      <button class="btn btn-primary" id="checkoutBtn" style="width:100%;justify-content:center;margin-top:10px;" onclick="checkoutCart()">Proceder al pago</button>
     </div>
   </div>
 </div>
@@ -730,6 +737,29 @@
     const cart = getCart();
     if (cart.length === 0){ alert('Tu carrito está vacío.'); return; }
 
+    const emailInput = document.getElementById('checkoutEmail');
+    const emailConfirmInput = document.getElementById('checkoutEmailConfirm');
+    const email = emailInput.value.trim();
+    const emailConfirm = emailConfirmInput.value.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email || !emailConfirm){
+      alert('Escribe tu correo electrónico y confírmalo antes de continuar.');
+      (!email ? emailInput : emailConfirmInput).focus();
+      return;
+    }
+    if (!emailPattern.test(email)){
+      alert('El correo electrónico no es válido. Revísalo e inténtalo de nuevo.');
+      emailInput.focus();
+      return;
+    }
+    if (email.toLowerCase() !== emailConfirm.toLowerCase()){
+      alert('Los dos correos no coinciden. Escríbelos de nuevo para confirmar.');
+      emailConfirmInput.value = '';
+      emailConfirmInput.focus();
+      return;
+    }
+
     const btn = document.getElementById('checkoutBtn');
     btn.disabled = true; btn.textContent = 'Procesando...';
 
@@ -742,7 +772,8 @@
           'apikey': SUPABASE_KEY
         },
         body: JSON.stringify({
-          items: cart.map(i => ({ type: i.type, id: i.id }))
+          items: cart.map(i => ({ type: i.type, id: i.id })),
+          email: email
         })
       });
 
