@@ -650,9 +650,8 @@
         <div class="price" id="pPrice">$0<span>&nbsp;USD</span></div>
         <div class="access">Acceso por 3 meses · 1 dispositivo activo a la vez</div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;" id="pAddCartBtn">Agregar al carrito</button>
-        <ul class="p-includes">
+        <ul class="p-includes" id="pIncludes">
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Video en español, 100% online</li>
-          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Materiales descargables por capítulo</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Exámenes de práctica tipo test</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Impartido por Geidy Manresa</li>
         </ul>
@@ -1114,6 +1113,23 @@
     }
 
     document.getElementById('pAddCartBtn').onclick = () => addToCart('course', course.id, course.title, course.price_cents);
+
+    // "¿Qué incluye?" — lo de siempre (video, exámenes, instructora) se
+    // queda fijo arriba; esto agrega, debajo, lo que Geidy haya escrito
+    // para ESTE curso en particular desde admin.html (un renglón = un
+    // punto de la lista). Se limpian los puntos del curso anterior antes
+    // de agregar los de este, porque esta misma lista se reutiliza cada
+    // vez que se abre un curso distinto.
+    const includesEl = document.getElementById('pIncludes');
+    includesEl.querySelectorAll('.p-includes-custom').forEach(li => li.remove());
+    const extraIncludes = (course.whats_included || '').split('\n').map(s => s.trim()).filter(Boolean);
+    extraIncludes.forEach(text => {
+      const li = document.createElement('li');
+      li.className = 'p-includes-custom';
+      li.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F0B429" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> <span></span>';
+      li.querySelector('span').textContent = text;
+      includesEl.appendChild(li);
+    });
 
     document.getElementById('productPage').classList.add('open');
     document.getElementById('productPage').scrollTop = 0;

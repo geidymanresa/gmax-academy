@@ -390,6 +390,7 @@
     </div>
     <div class="form-row"><label>Descripción corta (catálogo)</label><textarea id="courseShortDesc" placeholder="1-2 líneas que aparecen en la tarjeta del catálogo"></textarea></div>
     <div class="form-row"><label>Descripción completa (página del producto)</label><textarea id="courseFullDesc" placeholder="Descripción detallada del curso"></textarea></div>
+    <div class="form-row"><label>¿Qué incluye? (opcional — un punto por renglón, se agrega en la página del curso debajo de "Video en español", "Exámenes de práctica" e "Impartido por Geidy Manresa", que ya salen siempre)</label><textarea id="courseWhatsIncluded" placeholder="Un punto por renglón, por ejemplo:&#10;Plantillas de agencia listas para usar&#10;Guía de examen en PDF&#10;Grupo privado de apoyo"></textarea></div>
     <div class="form-grid-2">
       <div class="form-row"><label>Video de bienvenida (link de Bunny.net)</label><input type="text" id="courseIntroVideo" placeholder="https://..."></div>
       <div class="form-row"><label>Video de despedida (link de Bunny.net)</label><input type="text" id="courseOutroVideo" placeholder="https://..."></div>
@@ -1157,6 +1158,7 @@ function openCourseModal(){
   document.getElementById('courseAccessDays').value = '90';
   document.getElementById('courseShortDesc').value = '';
   document.getElementById('courseFullDesc').value = '';
+  document.getElementById('courseWhatsIncluded').value = '';
   document.getElementById('courseIntroVideo').value = '';
   document.getElementById('courseOutroVideo').value = '';
   document.getElementById('introChapterBlock').querySelector('.lessons-list').innerHTML = '';
@@ -1200,6 +1202,7 @@ window.editCourse = async function(id){
   document.getElementById('courseAccessDays').value = course.access_days;
   document.getElementById('courseShortDesc').value = course.short_description || '';
   document.getElementById('courseFullDesc').value = course.description || '';
+  document.getElementById('courseWhatsIncluded').value = course.whats_included || '';
   document.getElementById('courseIntroVideo').value = course.intro_video_url || '';
   document.getElementById('courseOutroVideo').value = course.outro_video_url || '';
   document.getElementById('courseStatus').value = course.status;
@@ -1615,6 +1618,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     const accessDays = parseInt(document.getElementById('courseAccessDays').value || '90');
     const shortDesc = document.getElementById('courseShortDesc').value.trim();
     const fullDesc = document.getElementById('courseFullDesc').value.trim();
+    const whatsIncluded = document.getElementById('courseWhatsIncluded').value.trim();
     const thumbnail = document.getElementById('courseThumbnail').value.trim();
     const introVideo = document.getElementById('courseIntroVideo').value.trim();
     const outroVideo = document.getElementById('courseOutroVideo').value.trim();
@@ -1628,7 +1632,7 @@ document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
     let courseId = editingCourseId;
     const payload = {
       title, slug, price_cents: Math.round(price*100), access_days: accessDays,
-      short_description: shortDesc, description: fullDesc, thumbnail_url: thumbnail,
+      short_description: shortDesc, description: fullDesc, whats_included: whatsIncluded, thumbnail_url: thumbnail,
       intro_video_url: introVideo, outro_video_url: outroVideo, status,
       created_by: currentUser.id
     };
