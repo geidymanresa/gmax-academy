@@ -165,6 +165,7 @@
     <div class="logo">GMAX <span>Panel Admin</span></div>
     <div class="navitem active" data-view="dashboard">📊 &nbsp;Dashboard</div>
     <div class="navitem" data-view="cursos">🎓 &nbsp;Cursos</div>
+    <div class="navitem" data-view="estudiantes">🧑‍🎓 &nbsp;Estudiantes</div>
     <div class="navitem" data-view="cupones">🏷️ &nbsp;Cupones</div>
     <div class="navitem" data-view="recursos">📄 &nbsp;Recursos Gratis</div>
     <div class="navitem" data-view="materiales">💰 &nbsp;Materiales de Pago</div>
@@ -237,6 +238,23 @@
         <table>
           <thead><tr><th>Curso</th><th>Precio</th><th>Estado</th><th>Inscritos</th><th></th></tr></thead>
           <tbody id="coursesBody"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ESTUDIANTES -->
+    <section id="view-estudiantes" class="view" style="display:none;">
+      <div class="page-head">
+        <div><h1>Estudiantes</h1><p>Busca a cualquier estudiante para ver su progreso, sus datos y su historial de compras.</p></div>
+      </div>
+      <div class="card" style="padding:22px 24px;">
+        <div style="display:flex;gap:10px;margin-bottom:18px;">
+          <input type="text" id="studentSearchInput" placeholder="Buscar por nombre o correo..." style="flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:'Inter',sans-serif;">
+          <button class="btn btn-primary" id="studentSearchBtn" type="button">Buscar</button>
+        </div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="studentsBody"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -577,6 +595,35 @@
   </div>
 </div>
 
+<!-- MODAL: PERFIL DE ESTUDIANTE -->
+<div class="modal-overlay" id="studentModal">
+  <div class="modal" style="max-width:700px;">
+    <h2 id="studentModalName">Estudiante</h2>
+    <div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.8;">
+      <div>✉️ <span id="studentModalEmail">—</span></div>
+      <div>📞 <span id="studentModalPhone">—</span></div>
+      <div>📍 <span id="studentModalAddress">—</span></div>
+      <div>🗓️ Registrado el <span id="studentModalCreated">—</span></div>
+    </div>
+
+    <div class="card-head" style="padding:0 0 10px;"><h3 style="font-size:14px;">🎓 Cursos</h3></div>
+    <table style="margin-bottom:20px;">
+      <thead><tr><th>Curso</th><th>Progreso</th><th>Va en</th><th>Acceso</th></tr></thead>
+      <tbody id="studentModalCourses"><tr><td colspan="4" class="empty-state">Cargando...</td></tr></tbody>
+    </table>
+
+    <div class="card-head" style="padding:0 0 10px;"><h3 style="font-size:14px;">🧾 Compras</h3></div>
+    <table>
+      <thead><tr><th>Fecha</th><th>Qué compró</th><th>Total</th><th>Tarjeta</th><th>Términos aceptados</th></tr></thead>
+      <tbody id="studentModalOrders"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+    </table>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelStudentBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: LISTA DE ESPERA DE UN CURSO -->
 <div class="modal-overlay" id="waitlistModal">
   <div class="modal" style="max-width:600px;">
@@ -673,6 +720,7 @@ document.querySelectorAll('.navitem').forEach(item=>{
     const view = item.dataset.view;
     document.getElementById('view-'+view).style.display='block';
     if(view==='cursos') loadCourses();
+    if(view==='estudiantes') loadStudents();
     if(view==='cupones') loadCoupons();
     if(view==='recursos') loadResources();
     if(view==='materiales') loadMaterials();
@@ -820,6 +868,124 @@ async function runPersonSearch(){
   const allRows = [...userRows, ...leadRows];
   body.innerHTML = allRows.length ? allRows.join('') : '<tr><td colspan="5" class="empty-state">No se encontró nadie con ese nombre o correo.</td></tr>';
 }
+
+// ---------- ESTUDIANTES ----------
+// Lista de todos los estudiantes (role='student'), con buscador por nombre
+// o correo. Cada fila muestra si tiene un curso activo en este momento, y
+// un botón "Ver perfil" que abre el detalle completo: progreso por curso,
+// en qué lección va, días de acceso restantes, datos de contacto, y el
+// historial de compras (con la tarjeta y la constancia de Términos y
+// Condiciones aceptados, para protección legal del negocio).
+document.getElementById('studentSearchBtn').addEventListener('click', loadStudents);
+document.getElementById('studentSearchInput').addEventListener('keydown', (e)=>{ if (e.key === 'Enter') loadStudents(); });
+
+async function loadStudents(){
+  const q = document.getElementById('studentSearchInput').value.trim();
+  const body = document.getElementById('studentsBody');
+  body.innerHTML = '<tr><td colspan="5" class="empty-state">Cargando...</td></tr>';
+
+  let query = sb.from('profiles').select('id, full_name, email, phone, address, role, created_at').eq('role', 'student').order('created_at', {ascending:false}).limit(200);
+  if (q){
+    query = sb.from('profiles').select('id, full_name, email, phone, address, role, created_at').eq('role', 'student').or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).limit(200);
+  }
+  const { data: students, error } = await query;
+
+  if (error || !students || students.length === 0){
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">${q ? 'No se encontró ningún estudiante con ese nombre o correo.' : 'Todavía no hay estudiantes registrados.'}</td></tr>`;
+    return;
+  }
+
+  const rows = await Promise.all(students.map(async s => {
+    const { data: enrolls } = await sb.from('enrollments').select('status, expires_at').eq('user_id', s.id).eq('status', 'active');
+    const active = (enrolls || []).some(e => new Date(e.expires_at) > new Date());
+    const estadoChip = active
+      ? '<span style="background:#E6F4EA;color:#1E7B34;font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;white-space:nowrap;">Activo</span>'
+      : '<span style="background:#F1F2F5;color:var(--slate);font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;white-space:nowrap;">Sin curso activo</span>';
+    return `<tr>
+      <td><b>${s.full_name || '—'}</b></td>
+      <td>${s.email || '—'}</td>
+      <td>${s.phone || '—'}</td>
+      <td>${estadoChip}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openStudentProfile('${s.id}')">Ver perfil</button></td>
+    </tr>`;
+  }));
+
+  body.innerHTML = rows.join('');
+}
+
+const studentModal = document.getElementById('studentModal');
+document.getElementById('cancelStudentBtn').addEventListener('click', ()=> studentModal.classList.remove('open'));
+
+window.openStudentProfile = async function(userId){
+  studentModal.classList.add('open');
+  document.getElementById('studentModalName').textContent = 'Cargando...';
+  document.getElementById('studentModalEmail').textContent = '—';
+  document.getElementById('studentModalPhone').textContent = '—';
+  document.getElementById('studentModalAddress').textContent = '—';
+  document.getElementById('studentModalCreated').textContent = '—';
+  document.getElementById('studentModalCourses').innerHTML = '<tr><td colspan="4" class="empty-state">Cargando...</td></tr>';
+  document.getElementById('studentModalOrders').innerHTML = '<tr><td colspan="5" class="empty-state">Cargando...</td></tr>';
+
+  const { data: profile } = await sb.from('profiles').select('id, full_name, email, phone, address, created_at').eq('id', userId).single();
+  if (!profile){
+    document.getElementById('studentModalName').textContent = 'No encontrado';
+    return;
+  }
+
+  document.getElementById('studentModalName').textContent = profile.full_name || profile.email || 'Estudiante';
+  document.getElementById('studentModalEmail').textContent = profile.email || '—';
+  document.getElementById('studentModalPhone').textContent = profile.phone || '—';
+  document.getElementById('studentModalAddress').textContent = profile.address || '—';
+  document.getElementById('studentModalCreated').textContent = formatDate(profile.created_at);
+
+  // Cursos: progreso (% de lecciones completadas), en qué lección va
+  // (last_lesson_id — lo mismo que usa dashboard.html para "retomar donde
+  // se quedó"), y días de acceso restantes (misma fórmula que mis-cursos.html).
+  const { data: enrolls } = await sb.from('enrollments').select('id, course_id, expires_at, starts_at, status, last_lesson_id, courses(title)').eq('user_id', userId).order('starts_at', {ascending:false});
+  const courseRows = await Promise.all((enrolls || []).map(async e => {
+    const { data: chapters } = await sb.from('chapters').select('id, lessons(id)').eq('course_id', e.course_id);
+    const lessonIds = (chapters || []).flatMap(ch => (ch.lessons || []).map(l => l.id));
+    let pct = 0;
+    if (lessonIds.length){
+      const { count } = await sb.from('lesson_progress').select('*', {count:'exact', head:true}).eq('user_id', userId).eq('completed', true).in('lesson_id', lessonIds);
+      pct = Math.round(((count || 0) / lessonIds.length) * 100);
+    }
+    let lastLessonTitle = '—';
+    if (e.last_lesson_id){
+      const { data: lesson } = await sb.from('lessons').select('title').eq('id', e.last_lesson_id).maybeSingle();
+      if (lesson) lastLessonTitle = lesson.title;
+    }
+    const expired = e.status !== 'active' || new Date(e.expires_at) < new Date();
+    const daysLeft = Math.max(0, Math.ceil((new Date(e.expires_at) - new Date()) / (1000*60*60*24)));
+    const accesoTxt = expired ? ('Vencido (' + formatDate(e.expires_at) + ')') : (daysLeft === 1 ? '1 día restante' : daysLeft + ' días restantes');
+    return `<tr>
+      <td>${e.courses?.title || 'Curso'}</td>
+      <td>${pct}% completado</td>
+      <td>${lastLessonTitle}</td>
+      <td>${accesoTxt}</td>
+    </tr>`;
+  }));
+  document.getElementById('studentModalCourses').innerHTML = courseRows.length ? courseRows.join('') : '<tr><td colspan="4" class="empty-state">No tiene ningún curso.</td></tr>';
+
+  // Compras: qué compró, total, tarjeta (últimos 4 dígitos) y si aceptó los
+  // Términos y Condiciones (no reembolsable) antes de pagar — esto último
+  // queda guardado por stripe-webhook desde la compra en adelante; las
+  // compras de antes de ese cambio van a mostrar "No disponible".
+  const { data: orders } = await sb.from('orders').select('id, created_at, total_cents, discount_cents, card_brand, card_last4, terms_accepted, terms_accepted_at, order_items(item_type, courses(title), materials(title))').eq('user_id', userId).order('created_at', {ascending:false});
+  const orderRows = (orders || []).map(o => {
+    const items = (o.order_items || []).map(it => it.courses?.title || it.materials?.title || (it.item_type === 'course' ? 'Curso' : 'Material')).join(', ');
+    const tarjeta = o.card_last4 ? `${(o.card_brand || 'tarjeta').toUpperCase()} •••• ${o.card_last4}` : '—';
+    const terminos = o.terms_accepted ? ('Sí, ' + formatDate(o.terms_accepted_at)) : 'No disponible';
+    return `<tr>
+      <td>${formatDate(o.created_at)}</td>
+      <td>${items || '—'}</td>
+      <td>$${(o.total_cents/100).toFixed(2)}${o.discount_cents ? ' <span style="color:#1E7B34;font-size:11px;">(desc. $' + (o.discount_cents/100).toFixed(2) + ')</span>' : ''}</td>
+      <td>${tarjeta}</td>
+      <td>${terminos}</td>
+    </tr>`;
+  });
+  document.getElementById('studentModalOrders').innerHTML = orderRows.length ? orderRows.join('') : '<tr><td colspan="5" class="empty-state">Sin compras registradas.</td></tr>';
+};
 
 // ---- Finalización de cursos: por cada curso publicado, cuenta cuántos
 // estudiantes inscritos activos han completado el 100% de las lecciones,

@@ -610,6 +610,10 @@
         <input type="email" id="checkoutEmailConfirm" placeholder="Escríbelo de nuevo" autocomplete="off" onpaste="return false;" ondrop="return false;" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:4px;box-sizing:border-box;">
         <div style="font-size:11.5px;color:var(--slate);margin-bottom:2px;">Escríbelo de nuevo sin copiar y pegar — así evitamos que un correo mal escrito pase sin darnos cuenta. Ahí te llegará el acceso al curso y el recibo de tu compra.</div>
       </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink);margin:12px 0 2px;cursor:pointer;">
+        <input type="checkbox" id="checkoutTerms" style="margin-top:2px;flex:none;">
+        <span>Acepto los <a href="terminos.html#reembolsos" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;">Términos y Condiciones</a> y entiendo que esta compra <strong>no es reembolsable</strong>.</span>
+      </label>
       <button class="btn btn-primary" id="checkoutBtn" style="width:100%;justify-content:center;margin-top:10px;" onclick="checkoutCart()">Proceder al pago</button>
     </div>
   </div>
@@ -732,6 +736,9 @@
     document.getElementById('cartTotal').textContent = '$' + (total/100).toFixed(0) + ' USD';
   }
   const CREATE_CHECKOUT_SESSION_URL = 'https://kxdkmtpyduuruhhzfpmg.supabase.co/functions/v1/smart-processor';
+  // Súbele este número (o cambia el texto) cada vez que se edite de verdad
+  // el contenido de terminos.html, para saber qué versión aceptó cada compra.
+  const TERMS_VERSION = 'v1-2026-09-22';
 
   window.checkoutCart = async function(){
     const cart = getCart();
@@ -760,6 +767,13 @@
       return;
     }
 
+    const termsCheckbox = document.getElementById('checkoutTerms');
+    if (!termsCheckbox.checked){
+      alert('Debes aceptar los Términos y Condiciones (compra no reembolsable) para poder continuar.');
+      termsCheckbox.focus();
+      return;
+    }
+
     const btn = document.getElementById('checkoutBtn');
     btn.disabled = true; btn.textContent = 'Procesando...';
 
@@ -773,7 +787,9 @@
         },
         body: JSON.stringify({
           items: cart.map(i => ({ type: i.type, id: i.id })),
-          email: email
+          email: email,
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION
         })
       });
 
