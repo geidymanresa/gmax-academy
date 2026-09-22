@@ -581,6 +581,10 @@
         </div>
         <input type="email" id="lgEmail" placeholder="Correo electrónico" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:10px;">
         <input type="tel" id="lgPhone" placeholder="Teléfono" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;margin-bottom:14px;">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink);margin:0 0 14px;cursor:pointer;">
+          <input type="checkbox" id="lgTerms" style="margin-top:2px;flex:none;">
+          <span>Acepto los <a href="terminos.html" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;">Términos y Condiciones</a>.</span>
+        </label>
         <div id="lgMsg" style="display:none;color:#D64545;font-size:12.5px;margin-bottom:12px;"></div>
         <button class="btn btn-gold" style="width:100%;justify-content:center;" id="lgSubmitBtn" onclick="submitLeadGate()">Obtener descargable</button>
       </div>
@@ -994,6 +998,7 @@
     document.getElementById('lgLastName').value = '';
     document.getElementById('lgEmail').value = '';
     document.getElementById('lgPhone').value = '';
+    document.getElementById('lgTerms').checked = false;
     document.getElementById('lgForm').style.display = 'block';
     document.getElementById('lgSuccess').style.display = 'none';
     document.getElementById('lgMsg').style.display = 'none';
@@ -1018,13 +1023,26 @@
       return;
     }
 
+    const termsCheckbox = document.getElementById('lgTerms');
+    if (!termsCheckbox.checked){
+      msgEl.textContent = 'Debes aceptar los Términos y Condiciones para poder descargar.';
+      msgEl.style.display = 'block';
+      termsCheckbox.focus();
+      return;
+    }
+
     const btn = document.getElementById('lgSubmitBtn');
     btn.disabled = true; btn.textContent = 'Enviando...';
     msgEl.style.display = 'none';
 
+    // El aceptar los Términos se revalida también del lado del servidor: la
+    // base de datos rechaza el INSERT si terms_accepted no viene en true para
+    // este origen (ver el CHECK en el SQL de esta ronda) — así no basta con
+    // saltarse la validación del navegador.
     const { error } = await sb.from('leads').insert({
       full_name: firstName + ' ' + lastName, email, phone,
-      source: 'free_resource', source_detail: resourceId
+      source: 'free_resource', source_detail: resourceId,
+      terms_accepted: true, terms_version: TERMS_VERSION
     });
 
     if (error){

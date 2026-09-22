@@ -308,8 +308,8 @@
       </div>
       <div class="card">
         <table>
-          <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Ciudad/Estado</th><th>Origen</th><th>Fecha</th></tr></thead>
-          <tbody id="leadsBody"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Ciudad/Estado</th><th>Origen</th><th>Términos</th><th>Fecha</th></tr></thead>
+          <tbody id="leadsBody"><tr><td colspan="7" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -2259,7 +2259,7 @@ async function loadLeads(){
   const { data: leads, error } = await sb.from('leads').select('*').order('created_at', {ascending:false}).limit(200);
   const body = document.getElementById('leadsBody');
   if (error || !leads || leads.length === 0){
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">Todavía no hay leads registrados.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">Todavía no hay leads registrados.</td></tr>';
     return;
   }
   body.innerHTML = leads.map(l => `
@@ -2269,6 +2269,7 @@ async function loadLeads(){
       <td>${l.phone || '—'}</td>
       <td>${[l.city, l.state].filter(Boolean).join(', ') || '—'}</td>
       <td>${sourceLabel(l.source)}</td>
+      <td>${l.source === 'free_resource' ? (l.terms_accepted ? '✅ Sí' + (l.terms_accepted_at ? ' — ' + formatDate(l.terms_accepted_at) : '') : '❌ No') : '—'}</td>
       <td>${formatDate(l.created_at)}</td>
     </tr>
   `).join('');
